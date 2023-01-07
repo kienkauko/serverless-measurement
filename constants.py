@@ -6,19 +6,22 @@ import os
 MASTER_HOST = "localhost"
 MASTER_USERNAME = "controller"
 MASTER_PASSWORD = "1"
-PI_IP = "192.168.101.48"
-PI_USERNAME = "pi"
-PI_PASSWORD = "1"
-SERVER_IP = "192.168.101.101"
-SERVER_USER = "server"
-PI4_IP = "192.168.101.17"
-PI4_USER = "pi4"
+JETSON_IP = "172.16.42.10"
+JETSON_USERNAME = "jetson"
+JETSON_PASSWORD = "1"
+STREAMING_IP = ""
+DETECTION_TIME = "30"
+NAMESPACE = "serverless"
+# SERVER_IP = "192.168.101.101"
+# SERVER_USER = "server"
+# PI4_IP = "192.168.101.17"
+# PI4_USER = "pi4"
 
 # CALCULATING_HOSTNAME = "server"
 # CALCULATING_INSTANCE = "192.168.101.101"
 
 # PORT
-PROMETHEUS_PORT = "8080"
+PROMETHEUS_PORT = "9090"
 
 # Common
 COLON = ":"
@@ -27,7 +30,6 @@ TEST_MODE = False
 
 # Network interfacte
 NETWORK_INTERFACE = "ens33"
-
 PROMETHEUS_DOMAIN = "http://"+ MASTER_HOST + COLON + PROMETHEUS_PORT +"/api/v1/query?query="
 SERVICE_DOMAIN = "http://serverless.default.svc.cluster.local"
 
@@ -72,7 +74,8 @@ DATA_TIMESTAMP_FILE_DIRECTORY = DEFAULT_DIRECTORY + "/data/timestamp/{}/{}/data_
 # START_UMMETER_CMD = '/usr/bin/python3 /home/controller/knative-caculation/usbmeter.py --addr 00:16:A5:00:0F:65 --out /home/controller/knative-caculation/data/data_ummeter/data_ummeter_{}_{} --time {}'
 # UPDATE_REPLICAS_CMD = '/usr/bin/python3 /home/controller/knative-caculation/main_rebuild.py changevalue {} {} {}'
 # RUN_UMMETER_AT_PI4_CMD = "/usr/bin/python3 /home/pi/knative-caculation/run_on_pi4/usbmeter.py {} {} {} {}"
-
+DELETE_IMAGE_CMD = "sudo crictl rmi "
+DOWNLOAD_IMAGE_CMD = ""
 # STATUS
 COLD_START_STATUS = "cold_start"
 COLD_DONE_STATUS = "cold_done"
@@ -117,3 +120,4 @@ ACTIVE_STATE = "active"
 
 # constant values
 NULL_CALCULATION_TIME = 30
+ACTIVE_CALCULATION_TIME = 30

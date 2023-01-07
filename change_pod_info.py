@@ -29,7 +29,7 @@ def update_replicas(target_pods_scale: int, instance: str, detection_image: str)
     except yaml.YAMLError as exc:
         print(exc)
 
-def config_replicas(target_pods_scale: int, instance: str, detection_image: str):
+def config_live_time(target_pods_scale: int, instance: str, time: int): #, detection_image: str
     #opens the capture file and updates the replica values
     try:  
         new_deployment = []
@@ -40,8 +40,8 @@ def config_replicas(target_pods_scale: int, instance: str, detection_image: str)
                     if value == "serving.knative.dev/v1":
                         doc["metadata"]["name"] = "detection"+str(target_pod+1)
                         doc["spec"]["template"]["spec"]["nodeSelector"]["kubernetes.io/hostname"] = str(instance)
-                        doc["spec"]["template"]["spec"]["containers"][0]["image"] = str(detection_image)
-                        doc["spec"]["template"]["metadata"]["annotations"]["autoscaling.knative.dev/window"] = str(50+target_pods_scale)+"s"
+                        # doc["spec"]["template"]["spec"]["containers"][0]["image"] = str(detection_image)
+                        doc["spec"]["template"]["metadata"]["annotations"]["autoscaling.knative.dev/window"] = str(time)+"s"
                         break
                 new_deployment.insert(target_pod,doc)
 
@@ -50,6 +50,7 @@ def config_replicas(target_pods_scale: int, instance: str, detection_image: str)
     except yaml.YAMLError as exc:
         print(exc)
 
+#NOTE: Consider rewriting the following functions by Python-k8s
 def deploy_pods():
     subprocess.call('echo {} | sudo -S kubectl apply -f {}'.format(MASTER_PASSWORD, path_file_output), shell=True)
     print("Service deployed")
