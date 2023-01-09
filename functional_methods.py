@@ -20,6 +20,9 @@ import signal
 import multiservice_pods
 from tinkerforge import pw
 
+localdate = datetime.now()
+generate_file_time = "{}_{}_{}_{}h{}".format(localdate.day, localdate.month, localdate.year, localdate.hour, localdate.minute)
+
 def force_terminate(target_pods:int):
     count = 0
     while get_pods_status(NAMESPACE, "terminating") != target_pods:
@@ -75,15 +78,10 @@ def get_prometheus_values_and_update_job(target_pods:int, job:str, repetition: i
     values_per_cpu_in_use = get_data_from_api(VALUES_CPU_QUERY.format(CALCULATING_INSTANCE))
     values_memory = get_data_from_api(VALUES_MEMORY_QUERY.format(CALCULATING_INSTANCE,CALCULATING_INSTANCE,CALCULATING_INSTANCE))
     values_running_pods = get_data_from_api(VALUES_PODS_QUERY.format(CALCULATING_HOSTNAME))    
-    update_job_status(job, values_running_pods, target_pods)
-    # if is_pod_terminating():
-    #     if WARM_STATE != job or (WARM_STATE == job and ((int(values_running_pods[1])-int(POD_EXISTED)) <= target_pods)):
-    #         job = job + ":terminating"
-    #         terminate_state[job].append(time.time())
     #write values to file
     try:
         writer = csv.writer(open(DATA_PROMETHEUS_FILE_DIRECTORY.format(
-            str(INSTANCE),str(CALCULATION_TYPE),str(target_pods),str(repetition),str(TARGET_VIDEO),str(INSTANCE),generate_file_time), 'a'))
+            str(INSTANCE),str(CALCULATION_TYPE),str(target_pods),str(repetition),str(TARGET_VIDEO),generate_file_time), 'a'))
         writer.writerow([values_running_pods[0],datetime.utcfromtimestamp(values_running_pods[0]).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], values_running_pods[1], values_power, values_per_cpu_in_use[1], values_memory[1], job])
     except:
         print("Error") 
@@ -97,7 +95,7 @@ def update_job_status(state:str, values_running_pods, target_pods:int):
     # print(state, values_running_pods, target_pods, POD_EXISTED)
     if WARM_DISK_2_WARM_CPU_PROCESS == state or "cold_start:curl" == state:
         if curr_running_pods == POD_EXISTED + target_pods:
-            jobs_status[WARM_DISK_2_WARM_CPU_PROCESS] = False
+            jobs_status[WARM_DISK_TO_WARM_CPU_PROCESS] = False
     elif WARM_CPU_STATE == state:
         if curr_running_pods == POD_EXISTED: # it means pods have been deleted 
             jobs_status[WARM_CPU_STATE] = False
@@ -106,25 +104,29 @@ def update_job_status(state:str, values_running_pods, target_pods:int):
             jobs_status[DELETE_PROCESSING] = False
 
 #NOTE: Tung will handle this function
-def create_request(url: str): # Here change to kubectl exec command by k8s python
+def create_request(url:str): # Here change to kubectl exec command by k8s python
     #rs_response = requests.get(url)
     rs_response = kubectl exec -it ubuntu -- "url"
     print(rs_response.content)
+
+def bash_cmd(cmd:str):
+    result = subprocess.run([cmd], stderr=subprocess.PIPE, text=True)
+    print("Bash output: {}".format(result.stderr))
 
 def create_request_thread(target_pods: int, request_type: str):
     for i in range(target_pods):
         print("Start thread :", i + 1)
         if request_type == "start":
-            threading.Thread(target=create_request, args=("http://detection"+str(i+1)+".default.svc.cluster.local/{}/api/stream/{}/{}".format(STREAMING_IP, DETECTION_TIME)).start()
+            threading.Thread(target=create_request, args=("http://detection"+str(i+1)+".default.svc.cluster.local/{}/api/stream/{}/{}".format(STREAMING_IP, DETECTION_TIME))).start()
         else if request_type == "stop":
-            threading.Thread(target=create_request, args=("http://detection"+str(i+1)+".default.svc.cluster.local/{}/api/terminate").start()
+            threading.Thread(target=create_request, args=("http://detection"+str(i+1)+".default.svc.cluster.local/api/terminate")).start()
         else:
             break
             
 def timestamps_to_file(target_pods:int, repetition:int):
     print(timestamps)
     with open(DATA_TIMESTAMP_FILE_DIRECTORY.format(
-        str(INSTANCE), str(CALCULATION_TYPE), str(target_pods), str(repetition), str(TARGET_VIDEO), str(INSTANCE), generate_file_time), 'w') as f:
+        str(INSTANCE), str(CALCULATION_TYPE), str(target_pods), str(repetition), str(TARGET_VIDEO), generate_file_time), 'w') as f:
         for key, value in terminate_state.items():
             timestamps[key+"_start"]=min(value)
             timestamps[key+"_end"]=max(value)
@@ -136,4 +138,12 @@ def timestamps_to_file(target_pods:int, repetition:int):
                 job_key = re.search('(.*)_end',key).group(1)
             f.write("%s,%s,%s\n"%(key,timestamps[key],job_key))
 
-def 
+#NOTE: the following function auto terminate pods
+def auto_delete(namespace:str):
+    while True:
+        list_pod = k8s_API.get_list_term_pod(namespace)
+        for i in list_pod:
+            IP = i.pod_ip
+            print("Pod with IP:{} will be terminated".format(IP))
+            threading.Thread(target=bash_cmd, args=(DELETE_PODS.format(IP))).start()
+        sleep(0.5)

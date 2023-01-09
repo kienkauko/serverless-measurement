@@ -1,77 +1,114 @@
-from constants import *
+import constants
 import time
+import functional_methods
+import k8s_API
 
 jobs_status = {
-    NULL_PROCESSING : True,
-    WARM_DISK : True,
-    COLD_START_PROCESSING : True,
-    WARM_PROCESSING : True,
-    COLD_PROCESSING : True,
-    ACTIVE_PROCESSING : True,
-    DELETE_PROCESSING : True}
+    # STATE
+    NULL_STATE : True,
+    WARM_CPU_STATE : True,
+    COLD_STATE : True,
+    ACTIVE_STATE : True,
+    # ACTION
+    NULL_TO_WARM_DISK_PROCESS : True,
+    WARM_DISK_TO_WARM_CPU_PROCESS : True,
+    WARM_CPU_TO_WARM_DISK_PROCESS : True,
+    WARM_DISK_TO_ACTIVE_PROCESS : True,
+    COLD_TO_WARM_DISK_PROCESS : True
+    }
 
-def calculate_null_job(target_pods:int, repetition: int, state:str):
-    print("Scenario: Measure NULL state - starting ...")
+def collect_null_state(target_pods:int, repetition: int, state:str):
+    print("Scenario: Measure NULL state - started")
     count = 0
-    while jobs_status[NULL_PROCESSING]:
+    while jobs_status[state]:
         get_prometheus_values_and_update_job(target_pods, state, repetition)
         time.sleep(0.5)
         count = count + 0.5
-        if count == int(NULL_CALCULATION_TIME):
-            jobs_status[NULL_PROCESSING] = False
-    print("Scenario: Measure NULL state - Ended!")
+        if count == int(STATE_COLLECT_TIME):
+            jobs_status[state] = False
+    print("Scenario: Measure NULL state - Ended")
 
-def calculate_warm_disk_2_warm_CPU_process(target_pods:int, repetition: int, state:str):
-    print("Scenario: Warm disk to warm CPU - Started...")
-    while jobs_status[WARM_DISK_2_WARM_CPU_PROCESS]:
-        get_prometheus_values_and_update_job(target_pods, state, repetition)
-        time.sleep(0.5)
-    print("Scenario: Warm disk to warm CPU - Ended...")
-
-def calculate_warm_CPU_state(target_pods:int, repetition: int):
-    print("Scenario: WARM CPU state - Started...")
-    while jobs_status[WARM_CPU_STATE]:
+def collect_warm_CPU_state(target_pods:int, repetition: int, state:str):
+    print("Scenario: WARM CPU state - Started")
+    while jobs_status[state]:
         get_prometheus_values_and_update_job(target_pods, WARM_JOB, repetition)
         time.sleep(0.5)
-    print("Scenario: WARM CPU state - Ended...")
+    print("Scenario: WARM CPU state - Ended")
 
-def WARM_CPU_2_ACTIVE(target_pods:int, repetition: int):
-    print("Scenario: COLD - Started...")
-    cold_caculation_time_count = 0
-    while jobs_status[WARM_CPU_2_ACTIVE_PROCESS]:
-        get_prometheus_values_and_update_job(target_pods, COLD_STATE, repetition)
+def collect_cold_state(target_pods:int, repetition: int), state:str:
+    print("Scenario: COLD state - Started")
+    while jobs_status[COLD_CPU_STATE]:
+        get_prometheus_values_and_update_job(target_pods, COLD_CPU_STATE, repetition)
         time.sleep(0.5)
-        cold_caculation_time_count = cold_caculation_time_count + 0.5
-        if cold_caculation_time_count == int(COLD_CALCULATION_TIME):
-            jobs_status[WARM_CPU_2_ACTIVE_PROCESS] = False
-    print("Scenario: COLD - Ended...")
+    print("Scenario: COLD state - Ended")
 
-def calculate_active_job(target_pods:int, repetition: int):
-    print("Scenario: ACTIVE - Started...")
+def collect_active_state(target_pods:int, repetition: int, state:str):
+    print("Scenario: ACTIVE - Started")
     active_calculation_time_count = 0
-    while jobs_status[ACTIVE_PROCESSING]:
-        get_prometheus_values_and_update_job(target_pods, ACTIVE_JOB, repetition)
+    while jobs_status[state]:
+        get_prometheus_values_and_update_job(target_pods, state, repetition)
         time.sleep(0.5)
         active_calculation_time_count = active_calculation_time_count + 0.5
         if active_calculation_time_count == int(ACTIVE_CALCULATION_TIME):
             # multiservice_pods.delete_pods()
-            jobs_status[ACTIVE_PROCESSING] = False
-    print("Scenario: ACTIVE - Ended...")
+            jobs_status[state] = False
+    print("Scenario: ACTIVE - Ended")
 
-def calculate_active_2_warm_disk(target_pods:int, repetition: int):
-    print("Scenario: Active to warm disk - Started...")
-    while jobs_status[ACTIVE_2_WARM_DISK_PROCESS]:
-        get_prometheus_values_and_update_job(target_pods, DELETE_JOB, repetition)
+#NOTE: this function general represents the STATE collection functions 
+def collect_state(target_pods:int, repetition: int, state:str):
+    print("Scenario: Measure {} - started".format(state))
+    count = 0
+    while jobs_status[state]:
+        get_prometheus_values_and_update_job(target_pods, state, repetition)
+        time.sleep(0.5)
+        count = count + 0.5
+        if count == int(STATE_COLLECT_TIME):
+            jobs_status[state] = False
+    print("Scenario: Measure {} - Ended".format(state))
+
+def collect_warm_disk_to_warm_CPU_process(target_pods:int, repetition: int, state:str):
+    print("Scenario: Warm disk to warm CPU - Started")
+    while jobs_status[state]:
+        get_prometheus_values_and_update_job(target_pods, state, repetition)
+        time.sleep(0.5)
+        if k8s_API.get_number_running_pod() == target_pods and k8s_API.is_all_con_ready == True: # detect status 2/2 ready
+            jobs_status[state] = False
+    print("Scenario: Warm disk to warm CPU - Ended")
+
+def collect_active_to_warm_disk_process(target_pods:int, repetition:int, state:str):
+    print("Scenario: Active to warm disk - Started")
+    while jobs_status[state]:
+        get_prometheus_values_and_update_job(target_pods, state, repetition)
         time.sleep(0.5)
         if k8s_API.get_number_pod(NAMESPACE) == 0:  # detect if no pod exists
-            jobs_status[ACTIVE_2_WARM_DISK_PROCESS] = False
-    print("Scenario: Active to warm disk - Ended...")
+            jobs_status[state] = False
+    print("Scenario: Active to warm disk - Ended")
 
-def calculate_warm_CPU_to_warm_disk(target_pods:int, repetition:int):
-    print("Scenario: Warm CPU to warm disk - Started...")
-    while jobs_status[WARM_CPU_TO_WARM_DISK_PROCESS]:
-        get_prometheus_values_and_update_job(target_pods, DELETE_JOB, repetition)
+def collect_warm_CPU_to_warm_disk_process(target_pods:int, repetition:int, state:str):
+    print("Scenario: Warm CPU to warm disk - Started")
+    while jobs_status[state]:
+        get_prometheus_values_and_update_job(target_pods, state, repetition)
         time.sleep(0.5)
         if k8s_API.get_number_pod(NAMESPACE) == 0:  # detect if no pod exists
-            jobs_status[WARM_CPU_TO_WARM_DISK_PROCESS] = False
-    print("Scenario: Warm CPU to warm disk - Ended...")
+            jobs_status[state] = False
+    print("Scenario: Warm CPU to warm disk - Ended")
+
+#NOTE: general function for active/warm to warm disk/null
+def collect_term_process(target_pods:int, repetition:int, state:str):
+    print("Scenario: {} - Started".format(state))
+    while jobs_status[state]:
+        get_prometheus_values_and_update_job(target_pods, state, repetition)
+        time.sleep(0.5)
+        if k8s_API.get_number_pod(NAMESPACE) == 0:  # detect if no pod exists
+            jobs_status[state] = False
+    print("Scenario: {} - Ended".format(state))
+
+def collect_null_to_warm_disk_process(target_pods:int, repetition:int, state:str):
+    print("Scenario: {} - Started".format(state))
+    while jobs_status[state]:
+        get_prometheus_values_and_update_job(target_pods, state, repetition)
+        time.sleep(0.5)
+        if  k8s_API.is_image_available("random", ) == True:  # detect if image has been pulled successfully
+            jobs_status[state] = False
+    print("Scenario: {} - Ended".format(state))
+
