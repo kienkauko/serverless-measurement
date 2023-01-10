@@ -7,6 +7,7 @@ MASTER_HOST = "localhost"
 WORKER_HOST = "jetson"
 MASTER_USERNAME = "controller"
 MASTER_PASSWORD = "1"
+PROM_IP ="172.16.36.101"
 JETSON_IP = "172.16.42.10"
 JETSON_USERNAME = "jetson"
 JETSON_PASSWORD = "1"
@@ -24,7 +25,7 @@ TEST_MODE = False
 
 # Network interfacte
 NETWORK_INTERFACE = "ens33"
-PROMETHEUS_DOMAIN = "http://"+ MASTER_HOST + COLON + PROMETHEUS_PORT +"/api/v1/query?query="
+PROMETHEUS_DOMAIN = "http://"+ PROM_IP + COLON + PROMETHEUS_PORT +"/api/v1/query?query="
 SERVICE_DOMAIN = "http://serverless.default.svc.cluster.local"
 
 # QUERY

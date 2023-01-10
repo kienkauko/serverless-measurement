@@ -12,11 +12,11 @@ spec:
       - image: hctung57/object-detection-arm:4.6.1.10@sha256:7361b88965a4bb39a693450902ad660e1722f4a9da677b36374318cc0023d771
         ports:
         - containerPort: 8080
-        lifecycle:
-        preStop:
-          exec:
-            command:
-              - sh
-              - -c
-              - curl "Địa chỉ terminated"
+        # lifecycle:
+        # preStop:
+        #   exec:
+        #     command:
+        #       - sh
+        #       - -c
+        #       - curl "Địa chỉ terminated"
       terminationGracePeriodSeconds: 0
