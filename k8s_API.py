@@ -178,7 +178,7 @@ def delete_pods(path_file_output : str = DEPLOYMENT_PATH):
     subprocess.call('echo {} | sudo -S kubectl delete -f {}'.format(MASTER_PASSWORD, path_file_output), shell=True)
     print("Service deleted")
 
-def connect_pod_exec(target_name: str, target_command: str):
+def connect_pod_exec(target_name: str = "ubuntu", target_command: str):
     command = "kubectl exec -it {} -- {} ".format(target_name, target_command)
     output = subprocess.check_output(['/bin/bash', '-c', command])
     print(output)

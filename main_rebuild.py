@@ -18,10 +18,8 @@ from pods import *
 import subprocess
 import os
 import signal
-import change_pod_info
 import functional_methods
 import collect_data
-from tinkerforge import pw
 
 
 
@@ -34,12 +32,12 @@ from tinkerforge import pw
 # POD_EXISTED = 0
 # CALCULATION_TYPE = ""
 
-finished = False
+# finished = False
 timestamps = {}
 # terminate_state = defaultdict(list)
 
 
-def collect_life_cycle(target_pods:int, repetition: int):
+def collect_life_cycle(event, target_pods:int, repetition: int):
     #NOTE: Null process 
     timestamps["null_state_start"]=time.time()
     collect_state(target_pods, repetition, NULL_STATE)
@@ -82,9 +80,9 @@ def collect_life_cycle(target_pods:int, repetition: int):
     # timestamps["warm_CPU_to_active_end"]=time.time()
 
     #NOTE: Here we create a curl request towards the running pod
-    create_request_thread(target_pods, "detection")
+    exec_pod(CURL_ACTIVE_INST, "normal")
     print("Detection requests have arrived. ")
-    time.sleep(10) #Here sleeping to stablize the pod for active measurement
+    time.sleep(20) #Here sleeping to stablize the pod for active measurement
     timestamps["active_state_start"]=time.time()
     collect_state(target_pods, repetition, ACTIVE_STATE) # 30 seconds, this time must be lower than requested time
     timestamps["active_state_end"]=time.time()
@@ -108,9 +106,9 @@ def collect_life_cycle(target_pods:int, repetition: int):
 
     #NOTE: Here we calculate the process warm disk to active, maybe change
     # to the older image (one that returns immediately after code is ready)
-    timestamps["warm_disk_to_active_start"]=time.time()
-    cal_warm_disk_to_active(target_pods, repetition, WARM_DISK_TO_ACTIVE_PROCESS)
-    timestamps["warm_disk_to_active_end"]=time.time()
+    # timestamps["warm_disk_to_active_start"]=time.time()
+    # cal_warm_disk_to_active(target_pods, repetition, WARM_DISK_TO_ACTIVE_PROCESS)
+    # timestamps["warm_disk_to_active_end"]=time.time()
 
     # wait until deployment scales down to zero
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
@@ -132,7 +130,7 @@ def collect_life_cycle(target_pods:int, repetition: int):
     #NOTE: Cold state to warm disk by downloading image
     k8s_API.config_live_time(, target_pods, , 6) # change live-time to minimum value = 6s
     timestamps["cold_to_warm_disk_start"]=time.time()
-    collect_cold_to_warm_disk_process(target_pods, repetition, COLD_TO_WARM_DISK_PROCESS)
+    collect_null_to_warm_disk_process(target_pods, repetition, COLD_TO_WARM_DISK_PROCESS)
     timestamps["cold_to_warm_disk_end"]=time.time()
     
     #NOTE: Now we consider from warm_disk/CPU to NULL state
@@ -153,10 +151,8 @@ def collect_life_cycle(target_pods:int, repetition: int):
     print("Measurement finished.")
     print("Saving timestamps..")
     timestamps_to_file(target_pods, repetition)
-    print("Done")
-    global finished
-    finished = True
-    return
+    event.set()
+    print("Finished!")
 
 if __name__ == "__main__":
     
@@ -164,12 +160,12 @@ if __name__ == "__main__":
     repeat_time = sys.argv[2]
     INSTANCE = sys.argv[3] # jetson
     # this P0 process runs infintely, detect and manual terminate "terminating" pods 
-    p0 = Process(target=functional_methods.auto_delete, args=(NAMESPACE),))
-    p1 = Process(target=calculate_jobs, args=(int(target_pods_scale), repeat_time, ), daemon = True)
+    event = Event() # the event is unset when created
+    p0 = Process(target=functional_methods.auto_delete, args=(event),)
+    p1 = Process(target=calculate_jobs, args=(event, int(target_pods_scale), repeat_time, ), daemon = True)
     print("Start calculate job on {}".format(INSTANCE))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
     p0.start()
     p1.start()
-    p1.join()
-    p0.join()    
-    print("Every process is done.")
+    p0.join()
+    p1.join()    
 

@@ -1,23 +1,19 @@
-
 from collections import defaultdict
 from datetime import datetime
 import requests
-from constants import *
+import constants
 import urllib.request
 import json
 import time
 import csv
 import paramiko
-import pods
 import sys
 import threading
 from multiprocessing import Event, Process
 from multiprocessing.pool import ThreadPool
-from pods import *
 import subprocess
 import os
 import signal
-import multiservice_pods
 from tinkerforge import pw
 
 localdate = datetime.now()
@@ -46,6 +42,7 @@ def force_terminate(target_pods:int):
 #     client.close()
 
 def remote_worker_call(command:str):
+    print("Trying to connect to remote host {}, IP: {}".format(JETSON_USERNAME, JETSON_IP))
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(JETSON_IP, username=JETSON_USERNAME, password=JETSON_PASSWORD)
@@ -139,11 +136,18 @@ def timestamps_to_file(target_pods:int, repetition:int):
             f.write("%s,%s,%s\n"%(key,timestamps[key],job_key))
 
 #NOTE: the following function auto terminate pods
-def auto_delete(namespace:str):
-    while True:
-        list_pod = k8s_API.get_list_term_pod(namespace)
-        for i in list_pod:
-            IP = i.pod_ip
-            print("Pod with IP:{} will be terminated".format(IP))
-            threading.Thread(target=bash_cmd, args=(DELETE_PODS.format(IP))).start()
+def auto_delete(event):
+    while not event.is_set():
+        exec_pod(CURL_TERM, "auto_delete")
         sleep(0.5)
+    print("Overwatch for termination finished!")
+
+def exec_pod(cmd:str, type: str = "normal"):
+    if type == "auto_delete":
+        list_pod = k8s_API.get_list_term_pod(NAMESPACE)
+    else:
+        list_pod = k8s_API.list_namespaced_pod_status(NAMESPACE)
+    for i in list_pod:
+        IP = i.pod_ip
+        threading.Thread(target= k8s_API.connect_pod_exec, args=(, cmd.format(IP))).start()
+        print("CMD: " + cmd.format(IP) + " has been sent.")

@@ -10,16 +10,9 @@ MASTER_PASSWORD = "1"
 JETSON_IP = "172.16.42.10"
 JETSON_USERNAME = "jetson"
 JETSON_PASSWORD = "1"
-STREAMING_IP = ""
-DETECTION_TIME = "30"
+STREAMING_IP = "172.16.36.101"
 NAMESPACE = "serverless"
-# SERVER_IP = "192.168.101.101"
-# SERVER_USER = "server"
-# PI4_IP = "192.168.101.17"
-# PI4_USER = "pi4"
 
-# CALCULATING_HOSTNAME = "server"
-# CALCULATING_INSTANCE = "192.168.101.101"
 
 # PORT
 PROMETHEUS_PORT = "9090"
@@ -75,10 +68,12 @@ DATA_TIMESTAMP_FILE_DIRECTORY = DEFAULT_DIRECTORY + "/data/timestamp/{}/{}/data_
 # START_UMMETER_CMD = '/usr/bin/python3 /home/controller/knative-caculation/usbmeter.py --addr 00:16:A5:00:0F:65 --out /home/controller/knative-caculation/data/data_ummeter/data_ummeter_{}_{} --time {}'
 # UPDATE_REPLICAS_CMD = '/usr/bin/python3 /home/controller/knative-caculation/main_rebuild.py changevalue {} {} {}'
 # RUN_UMMETER_AT_PI4_CMD = "/usr/bin/python3 /home/pi/knative-caculation/run_on_pi4/usbmeter.py {} {} {} {}"
-DELETE_IMAGE_CMD = "sudo crictl rmi "
-DOWNLOAD_IMAGE_CMD = ""
-DELETE_PODS = "kubectl exec -it {} -- curl http://{}/api/terminate"
-CURL_ACTIVE = "kubectl exec -it {} -- curl http://{}/api/terminate"
+DELETE_IMAGE_CMD = "sudo crictl rmi " + IMAGE_NAME
+CURL_TERM = "curl http://{}/api/terminate"
+CURL_ACTIVE = "curl http://{}/api/stream/" + STREAMING_IP + "/{}"
+CURL_ACTIVE_INST = "curl http://{}/api/stream/active/" + STREAMING_IP + "/{}"
+CURL_TRIGGER = "curl http://{}/api/active"
+
 # STATE
 NULL_STATE = "null_state"
 WARM_DISK_STATE = "warm_disk_state"
@@ -103,8 +98,10 @@ ACTIVE_STATE = "active"
 # Action
 
 # constant values
+IMAGE_NAME = "" #SHA code is required
 CALCULATION_TYPE = "normal"     # revert_lifecircle
 TARGET_VIDEO = "detection"
 STATE_COLLECT_TIME = 30
 NULL_CALCULATION_TIME = 30
 ACTIVE_CALCULATION_TIME = 30
+DETECTION_TIME = 30
