@@ -2,18 +2,16 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: detection1
+  namespace: serverless
 spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/max-scale: '1'
-        autoscaling.knative.dev/target: '1'
         autoscaling.knative.dev/window: 100s
     spec:
       containers:
-      - image: 29061999/knative-video-detection-arm@sha256:47705b6d9561b0fe45fadf559802a8d500c32b069fd50ef0fc69e6859c34a9e3
+      - image: docker.io/kienkauko/nettools:latest@sha256:573c90a86216c26c02b27ce4105ea7cbf09016659fd30e8f8f61f67fab324620
         ports:
         - containerPort: 8080
       nodeSelector:
-        kubernetes.io/hostname: pi4
-
+        kubernetes.io/hostname: jetson

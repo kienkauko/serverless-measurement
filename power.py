@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-HOST = "localhost"
+HOST = "172.16.36.101"
 PORT = 4223
 UID = "23iX" # Change XYZ to the UID of your Voltage/Current Bricklet 2.0
 
@@ -10,9 +10,11 @@ from tinkerforge.bricklet_voltage_current_v2 import BrickletVoltageCurrentV2
 import time
 
 ipcon = IPConnection() # Create IP connection
-pw = BrickletVoltageCurrentV2(UID, ipcon) # Create device object
 ipcon.connect(HOST, PORT) # Connect to brickd
+# ipcon.set_timeout(10)
+pw = BrickletVoltageCurrentV2(UID, ipcon) # Create device object
 # Callback function for current callback
+
 def cb_current(current):
     print("Current: " + str(current/1000.0) + " A")
 
@@ -34,14 +36,14 @@ if __name__ == "__main__":
     # vc.set_current_callback_configuration(500, False, "x", 0, 0)
 
  # Register power callback to function cb_power
-    pw.register_callback(vc.CALLBACK_POWER, cb_power)
+    # pw.register_callback(pw.CALLBACK_POWER, cb_power)
 
     # Configure threshold for power "greater than 10 W"
     # with a debounce period of 1s (1000ms)
-    pw.set_power_callback_configuration(1000, False, ">", 1*1000, 0)
-    # while True:
-    #     print("power: " + str(vc.get_power()/1000.0) + " W")
-    #     time.sleep(0.1)
+    # pw.set_power_callback_configuration(1000, False, ">", 1*1000, 0)
+    while True:
+        print("power: " + str(pw.get_power()/1000.0) + " W")
+        time.sleep(0.1)
     
     input("Press key to exit\n") # Use raw_input() in Python 2
     ipcon.disconnect()

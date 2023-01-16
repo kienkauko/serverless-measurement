@@ -1,11 +1,12 @@
-import constants
+from constants import *
 import time
-import functional_methods
+from functional_methods import *
 import k8s_API
 
 jobs_status = {
     # STATE
     NULL_STATE : True,
+    WARM_DISK_STATE: True,
     WARM_CPU_STATE : True,
     COLD_STATE : True,
     ACTIVE_STATE : True,
@@ -14,7 +15,8 @@ jobs_status = {
     WARM_DISK_TO_WARM_CPU_PROCESS : True,
     WARM_CPU_TO_WARM_DISK_PROCESS : True,
     WARM_DISK_TO_ACTIVE_PROCESS : True,
-    COLD_TO_WARM_DISK_PROCESS : True
+    COLD_TO_WARM_DISK_PROCESS : True,
+    WARM_DISK_TO_NULL_PROCESS : True,
     }
 
 def collect_null_state(target_pods:int, repetition: int, state:str):
@@ -35,7 +37,7 @@ def collect_warm_CPU_state(target_pods:int, repetition: int, state:str):
         time.sleep(0.5)
     print("Scenario: WARM CPU state - Ended")
 
-def collect_cold_state(target_pods:int, repetition: int), state:str:
+def collect_cold_state(target_pods:int, repetition: int, state: str):
     print("Scenario: COLD state - Started")
     while jobs_status[COLD_CPU_STATE]:
         get_prometheus_values_and_update_job(target_pods, COLD_CPU_STATE, repetition)
@@ -71,7 +73,7 @@ def collect_warm_disk_to_warm_CPU_process(target_pods:int, repetition: int, stat
     while jobs_status[state]:
         get_prometheus_values_and_update_job(target_pods, state, repetition)
         time.sleep(0.5)
-        if k8s_API.get_number_running_pod() == target_pods and k8s_API.is_all_con_ready == True: # detect status 2/2 ready
+        if k8s_API.get_number_running_pod() == target_pods and k8s_API.is_all_con_ready() == True: # detect status 2/2 ready
             jobs_status[state] = False
     print("Scenario: Warm disk to warm CPU - Ended")
 

@@ -1,6 +1,11 @@
 from kubernetes import client, config
 import subprocess
 import random
+import datetime
+from time import sleep
+import yaml
+import re
+from constants import *
 
 config.load_kube_config()
 ApiV1 = client.CoreV1Api()
@@ -16,8 +21,17 @@ class KubernetesPod:
         self.sum_pod_container = sum_pod_container
         self.number_container_ready = number_container_ready
 
+class PodEvents:
+    def __init__(self, pod_name, event_time, event, event_message) -> None:
+        self.pod_name = pod_name
+        self.event_time = event_time
+        self.event = event
+        self.event_message = event_message
+        
+def list_namespaced_pod(target_namespace: str = NAMESPACE):
+    api_get_pods_response = ApiV1.list_namespaced_pod(target_namespace)
 
-def list_namespaced_pod_status(target_namespace: str = "default"):
+def list_namespaced_pod_status(target_namespace: str = NAMESPACE):
     list_pod_status = []
     api_get_pods_response = ApiV1.list_namespaced_pod(target_namespace)
     for pod in api_get_pods_response.items:
@@ -28,9 +42,12 @@ def list_namespaced_pod_status(target_namespace: str = "default"):
         if pod.metadata.deletion_timestamp != None and (pod.status.phase == 'Running' or pod.status.phase == 'Pending'):
             current_pod_state = 'Terminating'
         elif pod.status.phase == 'Pending':
-            for container in pod.status.container_statuses:
-                if container.state.waiting != None:
-                    current_pod_state = container.state.waiting.reason
+            try:
+                for container in pod.status.container_statuses:
+                    if container.state.waiting != None:
+                        current_pod_state = container.state.waiting.reason
+            except:
+                return list_pod_status
         else:
             current_pod_state = str(pod.status.phase)
         sum_pod_container = len(pod.status.container_statuses)
@@ -43,7 +60,7 @@ def list_namespaced_pod_status(target_namespace: str = "default"):
     return list_pod_status
 
 
-def get_number_namespaced_pod_through_status(target_status: str, target_namespace: str = "default"):
+def get_number_namespaced_pod_through_status(target_status: str, target_namespace: str = NAMESPACE):
     count = 0
     list_pod = list_namespaced_pod_status(target_namespace)
     for pod in list_pod:
@@ -53,7 +70,7 @@ def get_number_namespaced_pod_through_status(target_status: str, target_namespac
 
 # NOTE: get event of pod over  pod's name
 #      return array of PodEvents class
-def list_namespaced_event(target_pod_name: str, target_namespace: str = "default"):
+def list_namespaced_event(target_pod_name: str, target_namespace: str = NAMESPACE):
     list_pod_event = []
     events_response = ApiV1.list_namespaced_event(
         target_namespace, field_selector=f'involvedObject.name={target_pod_name}')
@@ -72,14 +89,20 @@ def list_namespaced_event(target_pod_name: str, target_namespace: str = "default
 #      - return True or False
 def is_image_available(target_pod: str, start_timeline: datetime = None):
     name = ""
-    if target_pod == "random":
-        name = random.choice(list_namespaced_pod_status()).pod_name:
+    is_pulled = False
+    api_get_pods_response = ApiV1.list_namespaced_pod(NAMESPACE)
+    if target_pod == "random" and len(api_get_pods_response.items) != 0:
+        # print(list_namespaced_pod_status())
+        pod = random.choice(api_get_pods_response.items)
+        name = pod.metadata.name
+    elif len(api_get_pods_response.items) == 0:
+        return False
     else:
         name = target_pod
-    
-    is_pulled = False
+    # print(name)
     events = list_namespaced_event(name)
     for event in events:
+        print(event.event)
         if start_timeline != None and event.event_time != None:
             if event.event_time < start_timeline.timestamp():
                 continue
@@ -89,7 +112,7 @@ def is_image_available(target_pod: str, start_timeline: datetime = None):
     return is_pulled
 
 def create_namespaced_service(target_service: str, target_ID: str,
-                              target_service_port: int, target_namespace: str = "default"):
+                              target_service_port: int, target_namespace: str = "serverless"):
     service_name = target_service + "-" + target_ID + "-service"
     service_selector = target_service + "-" + target_ID + "-deployment"
     body = client.V1Service(
@@ -111,7 +134,7 @@ def create_namespaced_service(target_service: str, target_ID: str,
 
 
 def create_namespaced_deployment(target_deployment: str, target_ID: str, target_image: str,
-                                 target_container_port: int, target_env, target_namespace: str = "default"):
+                                 target_container_port: int, target_env, target_namespace: str = "serverless"):
     deployment_name = target_deployment + "-" + target_ID + "-deployment"
     body = (
         client.V1Deployment(
@@ -152,7 +175,7 @@ def create_namespaced_deployment(target_deployment: str, target_ID: str, target_
     return ("Deploy {} succesfully.".format(deployment_name))
 
 
-def delete_namespaced_deployment(target_deployment: str, target_ID: str, target_namespace: str = "default"):
+def delete_namespaced_deployment(target_deployment: str, target_ID: str, target_namespace: str = "serverless"):
     deployment_name = target_deployment + "-" + target_ID + "-deployment"
     try:
         AppV1.delete_namespaced_deployment(deployment_name, target_namespace)
@@ -161,7 +184,7 @@ def delete_namespaced_deployment(target_deployment: str, target_ID: str, target_
     return ("Delete {} succesfully.".format(deployment_name))
 
 
-def delete_namespaced_service(target_service: str, target_ID: str, target_namespace: str = "default"):
+def delete_namespaced_service(target_service: str, target_ID: str, target_namespace: str = "serverless"):
     service_name = target_service + "-" + target_ID + "-service"
     try:
         ApiV1.delete_namespaced_service(service_name, target_namespace)
@@ -171,24 +194,49 @@ def delete_namespaced_service(target_service: str, target_ID: str, target_namesp
 
 #NOTE: Consider rewriting the following functions by Python-k8s
 def deploy_pods(path_file_output : str = DEPLOYMENT_PATH):
-    subprocess.call('echo {} | sudo -S kubectl apply -f {}'.format(MASTER_PASSWORD, path_file_output), shell=True)
-    print("Service deployed")
+    subprocess.call('echo {} | sudo {}/./kubectl.sh {} {}'.format(MASTER_PASSWORD, BASH_PATH, "deploy", path_file_output), shell=True)
+    # print("Service deployed")
 
 def delete_pods(path_file_output : str = DEPLOYMENT_PATH):
-    subprocess.call('echo {} | sudo -S kubectl delete -f {}'.format(MASTER_PASSWORD, path_file_output), shell=True)
-    print("Service deleted")
+    subprocess.call('echo {} | sudo {}/./kubectl.sh {} {}'.format(MASTER_PASSWORD, BASH_PATH, "delete", path_file_output), shell=True)
+    # print("Service deleted")
 
-def connect_pod_exec(target_name: str = "ubuntu", target_command: str):
+def connect_pod_exec(target_command: str, target_name: str = "ubuntu"):
     command = "kubectl exec -it {} -- {} ".format(target_name, target_command)
-    output = subprocess.check_output(['/bin/bash', '-c', command])
-    print(output)
+    trial = 0
+    while trial < 20:
+        try:
+            subprocess.check_output(['/bin/bash', '-c', command])
+        except subprocess.CalledProcessError as e:
+            output = str(e.output)
+            print("Subprocess output is: {}".format(output))
+            if "52" in output:
+                print("Terminated successfully")
+                return 
+            else:
+                print("Terminated unsuccessfully, trial: {}".format(trial))
+                sleep(1)
+                trial = trial + 1
+                continue
+        print("Seem like a good request, but we never know :)")
+        return 
+    print("The system has sent {} times curl cmd, but none returns successfully.".format(trial))
+
 
 def is_pod_terminated(namespace:str = NAMESPACE):
+    # print("abcdef")
     list_pod = list_namespaced_pod_status(namespace)
+    # print("size: {}".format(len(list_pod)))
+    if len(list_pod) == 0:
+        return False
     i:KubernetesPod
-        for i in list_pod:
-            if i.pod_status == "Terminating":
-                return True
+    for i in list_pod:
+        # print("Pod status is: {}".format(i.pod_status))
+        if i.pod_status == "Terminating":
+            return True
+        else:
+            return False
+    return False
 
 def get_number_pod(namespace:str = NAMESPACE):
     return len(list_namespaced_pod_status(namespace))
@@ -197,9 +245,9 @@ def get_number_running_pod(namespace:str = NAMESPACE):
     count = 0
     list_pod = list_namespaced_pod_status(namespace)
     i:KubernetesPod
-        for i in list_pod:
-            if i.pod_status == "Running":
-                count = count + 1
+    for i in list_pod:
+        if i.pod_status == "Running":
+            count = count + 1
     return count
 
 def get_list_term_pod(namespace:str = NAMESPACE):
@@ -207,12 +255,12 @@ def get_list_term_pod(namespace:str = NAMESPACE):
     list_pod = list_namespaced_pod_status(namespace)
     list_term_pod = []
     i:KubernetesPod
-        for i in list_pod:
-            if i.pod_status == "Terminating":
-                list_term_pod.append(i)
+    for i in list_pod:
+        if i.pod_status == "Terminating":
+            list_term_pod.append(i)
     return list_term_pod
 
-def update_replicas(path_file_deploy: str = DEPLOYMENT_PATH, target_pods_scale: int, instance: str = WORKER_HOST, detection_image: str):
+def update_replicas(target_pods_scale: int, detection_image: str, path_file_deploy: str = DEPLOYMENT_PATH, instance: str = WORKER_HOST):
 #opens the capture file and updates the replica values
     try:  
         new_deployment = []
@@ -227,15 +275,16 @@ def update_replicas(path_file_deploy: str = DEPLOYMENT_PATH, target_pods_scale: 
                         break
                 new_deployment.insert(target_pod,doc)
 
-        with open(path_file_output, 'w') as yaml_file:
+        with open(DEPLOYMENT_PATH, 'w') as yaml_file:
             yaml.dump_all(new_deployment, yaml_file, default_flow_style=False)
     except yaml.YAMLError as exc:
         print(exc)
 
-def config_live_time(path_file_deploy: str = DEPLOYMENT_PATH, target_pods_scale: int, instance: str = WORKER_HOST, time: int): #, detection_image: str
+def config_live_time(target_pods_scale: int, time: int, path_file_deploy: str = DEPLOYMENT_PATH, instance: str = WORKER_HOST): #, detection_image: str
     #opens the capture file and updates the replica values
     try:  
         new_deployment = []
+        # print(type(time))
         for target_pod in range(0, target_pods_scale, 1):
             docs = list(yaml.load_all(open(path_file_deploy, "r"), Loader=yaml.SafeLoader))
             for doc in docs:
@@ -248,10 +297,11 @@ def config_live_time(path_file_deploy: str = DEPLOYMENT_PATH, target_pods_scale:
                         break
                 new_deployment.insert(target_pod,doc)
 
-        with open(path_file_output, 'w') as yaml_file:
+        with open(DEPLOYMENT_PATH, 'w') as yaml_file:
             yaml.dump_all(new_deployment, yaml_file, default_flow_style=False)
     except yaml.YAMLError as exc:
         print(exc)
+    print("Live time has been changed to {} seconds".format(time))
 
 def is_all_con_ready(namespace: str = NAMESPACE):
     a = list_namespaced_pod_status(namespace)
