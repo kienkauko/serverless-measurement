@@ -1,7 +1,7 @@
 import os
 import yaml
 import subprocess
-from constants import *
+from variables import *
 # import main_rebuild
 from run_on_pi4.pi4_constants import SLASH
 

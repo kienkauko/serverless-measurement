@@ -1,5 +1,5 @@
 from time import sleep
-from main_rebuild import *
+from main import *
 from datetime import datetime
 from subprocess import call  
 import requests  

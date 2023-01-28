@@ -1,5 +1,5 @@
 import subprocess
-from main_rebuild import *
+from main import *
 import docker
 import json
 

@@ -2,8 +2,8 @@ import os
 from pydoc import doc
 import yaml
 import subprocess
-from constants import *
-import main_rebuild
+from variables import *
+import main
 from run_on_pi4.pi4_constants import SLASH
 
 path_file_deploy = DEFAULT_DIRECTORY + "/deployments/detection_origin.yaml"

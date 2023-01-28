@@ -6,7 +6,7 @@ metadata:
     app: ubuntu
 spec:
   containers:
-  - image: kiemtcb/curl:5.0
+  - image: kienkauko/nettools:arm
     command:
       - "sleep"
       - "604800"

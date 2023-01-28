@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 import requests
-import constants
+import variables
 import urllib.request
 import json
 import time
@@ -15,37 +15,16 @@ import subprocess
 import os
 import signal
 from power import pw
-from constants import *
+from variables import *
 import k8s_API
 from time import sleep
 import re
 
-localdate = datetime.now()
-generate_file_time = "{}_{}_{}_{}h{}".format(localdate.day, localdate.month, localdate.year, localdate.hour, localdate.minute)
-
-# def force_terminate(target_pods:int):
-#     count = 0
-#     while get_pods_status(NAMESPACE, "terminating") != target_pods:
-#         if count % 10:
-#             print("waiting for pod to be terminated by the system, wating time is: {}s".format(count))
-#         count = count + 1
-#         sleep(1)
-#     print("Termination cmd has been sent by the system, perform force delete now ...")
-#     create_request_thread(target_pods, "terminating")
-#     print("Force termination cmd has been sent")
-
-# def start_master(command:str):
- 
-#     client = paramiko.SSHClient()
-#     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-#     client.connect(MASTER_HOST, username=MASTER_USERNAME, password=MASTER_PASSWORD)
-#     print(command)
-#     stdin, stdout, stderr = client.exec_command(command)
-#     for line in stdout:
-#         print (line.strip('\n'))
-#     client.close()
-
-def remote_worker_call(command:str):
+def thread_remote(cmd : str):
+    thread = threading.Thread(target=remote_worker_call, args=(cmd, )).start()
+    return thread
+    
+def remote_worker_call(command:str, event = None):
     print("Trying to connect to remote host {}, IP: {}".format(JETSON_USERNAME, JETSON_IP))
     try:
         client = paramiko.SSHClient()
@@ -63,6 +42,8 @@ def remote_worker_call(command:str):
     for line in stdout:
         print (line.strip('\n'))
     client.close()
+    if event is not None:
+        event.set()
 
 def get_data_from_api(query:str):
     url_data = PROMETHEUS_DOMAIN + query
@@ -84,7 +65,8 @@ def get_data_from_api(query:str):
 def get_prometheus_values_and_update_job(target_pods:int, job:str, repetition: int):
     values_power = pw.get_power()/1000.0
     values_per_cpu_in_use = get_data_from_api(VALUES_CPU_QUERY.format(JETSON_IP))
-    # print(values_per_cpu_in_use)
+    values_per_gpu_in_use = get_data_from_api(VALUES_GPU_QUERY.format(JETSON_IP))
+    # values_network_receive = get_data_from_api(VALUES_NETWORK_RECEIVE_QUERY)
     values_memory = get_data_from_api(VALUES_MEMORY_QUERY.format(JETSON_IP,JETSON_IP,JETSON_IP))
     # print(values_memory)
     values_running_pods = k8s_API.get_number_pod() 
@@ -94,26 +76,27 @@ def get_prometheus_values_and_update_job(target_pods:int, job:str, repetition: i
     try:
         writer = csv.writer(open(DATA_PROMETHEUS_FILE_DIRECTORY.format(
             str(WORKER_HOST),str(target_pods),str(repetition),str(TARGET_VIDEO),generate_file_time), 'a'))
-        writer.writerow([values_memory[0], datetime.utcfromtimestamp(values_memory[0]).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], values_running_pods, values_power, values_per_cpu_in_use[1], values_memory[1], job])
+        writer.writerow([values_memory[0], datetime.utcfromtimestamp(values_memory[0]).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], values_running_pods, 
+            values_power, values_per_cpu_in_use[1], values_per_gpu_in_use[1], values_memory[1], job])
     except:
         print("Error") 
     # if TEST_MODE: print("Current pods: %s, target: %d" % (curr_pods, (int(target_pods)+POD_EXSISTED)))
 
     
 
-def update_job_status(state:str, values_running_pods, target_pods:int):
-    #+2 on target pods for the default pods
-    curr_running_pods = int(values_running_pods[1])
-    # print(state, values_running_pods, target_pods, POD_EXISTED)
-    if WARM_DISK_2_WARM_CPU_PROCESS == state or "cold_start:curl" == state:
-        if curr_running_pods == POD_EXISTED + target_pods:
-            jobs_status[WARM_DISK_TO_WARM_CPU_PROCESS] = False
-    elif WARM_CPU_STATE == state:
-        if curr_running_pods == POD_EXISTED: # it means pods have been deleted 
-            jobs_status[WARM_CPU_STATE] = False
-    elif DELETE_JOB == state:
-        if curr_running_pods == POD_EXISTED:
-            jobs_status[DELETE_PROCESSING] = False
+# def update_job_status(state:str, values_running_pods, target_pods:int):
+#     #+2 on target pods for the default pods
+#     curr_running_pods = int(values_running_pods[1])
+#     # print(state, values_running_pods, target_pods, POD_EXISTED)
+#     if WARM_DISK_2_WARM_CPU_PROCESS == state or "cold_start:curl" == state:
+#         if curr_running_pods == POD_EXISTED + target_pods:
+#             jobs_status[WARM_DISK_TO_WARM_CPU_PROCESS] = False
+#     elif WARM_CPU_STATE == state:
+#         if curr_running_pods == POD_EXISTED: # it means pods have been deleted 
+#             jobs_status[WARM_CPU_STATE] = False
+#     elif DELETE_JOB == state:
+#         if curr_running_pods == POD_EXISTED:
+#             jobs_status[DELETE_PROCESSING] = False
 
 #NOTE: Tung will handle this function
 # def create_request(url:str): # Here change to kubectl exec command by k8s python
@@ -136,13 +119,12 @@ def bash_cmd(cmd:str):
 #             break
             
 def timestamps_to_file(timestamps: dict, target_pods:int, repetition:int):
-    print(timestamps)
+    # print(timestamps)
     with open(DATA_TIMESTAMP_FILE_DIRECTORY.format(
         str(WORKER_HOST), str(target_pods), str(repetition), str(TARGET_VIDEO), generate_file_time), 'w') as f:
         # for key, value in terminate_state.items():
         #     timestamps[key+"_start"]=min(value)
         #     timestamps[key+"_end"]=max(value)
-
         for key in timestamps.keys():
             if "_start" in key:
                 job_key = re.search('(.*)_start',key).group(1)
@@ -154,7 +136,7 @@ def timestamps_to_file(timestamps: dict, target_pods:int, repetition:int):
 def auto_delete(event):
     token = True
     while not event.is_set():
-        if k8s_API.is_pod_terminated() and token:
+        if k8s_API.is_pod_terminated() and not k8s_API.is_all_con_not_ready() and token:
             print("Detect terminating pod, it'll be deleted shortly")
             if exec_pod(CURL_TERM, "auto_delete"):
                 token = False
@@ -182,6 +164,10 @@ def exec_pod(cmd:str, type: str = "normal"):
         threading.Thread(target= k8s_API.connect_pod_exec, args=(cmd.format(IP), )).start()
         print("CMD: " + cmd.format(IP) + " has been sent.")
     return True
+
+def config_deploy(cmd: str):
+    Process(target= k8s_API.config_deploy, args=(cmd, )).start()
+    # threading.Thread(target= k8s_API.config_deploy, args=(cmd, )).start()
 
 if __name__ == "__main__":
     # print(pw.get_power()/1000.0)
