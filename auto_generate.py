@@ -7,7 +7,7 @@ import functional_methods
 if __name__ == "__main__":
 
     target_pods_scale = [1] 
-    repeat_time = 10
+    repeat_time = 30
     current_time = 1
     instance = "jetson"
 

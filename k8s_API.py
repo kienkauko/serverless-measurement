@@ -97,7 +97,7 @@ def is_image_available(target_pod: str, start_timeline: datetime = None):
     # print(name)
     events = list_namespaced_event(name)
     for event in events:
-        print(event.event)
+        # print(event.event)
         if start_timeline != None and event.event_time != None:
             if event.event_time < start_timeline.timestamp():
                 continue

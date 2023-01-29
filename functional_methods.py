@@ -19,6 +19,13 @@ from variables import *
 import k8s_API
 from time import sleep
 import re
+import psutil
+
+def get_bytes():
+    return psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
+
+def get_mbits():
+    return (psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv)/1024./1024.*8
 
 def thread_remote(cmd : str):
     thread = threading.Thread(target=remote_worker_call, args=(cmd, )).start()
@@ -64,6 +71,7 @@ def get_data_from_api(query:str):
 
 def get_prometheus_values_and_update_job(target_pods:int, job:str, repetition: int):
     values_power = pw.get_power()/1000.0
+    values_nw = get_bytes()
     values_per_cpu_in_use = get_data_from_api(VALUES_CPU_QUERY.format(JETSON_IP))
     values_per_gpu_in_use = get_data_from_api(VALUES_GPU_QUERY.format(JETSON_IP))
     # values_network_receive = get_data_from_api(VALUES_NETWORK_RECEIVE_QUERY)
@@ -77,9 +85,9 @@ def get_prometheus_values_and_update_job(target_pods:int, job:str, repetition: i
         writer = csv.writer(open(DATA_PROMETHEUS_FILE_DIRECTORY.format(
             str(WORKER_HOST),str(target_pods),str(repetition),str(TARGET_VIDEO),generate_file_time), 'a'))
         writer.writerow([values_memory[0], datetime.utcfromtimestamp(values_memory[0]).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], values_running_pods, 
-            values_power, values_per_cpu_in_use[1], values_per_gpu_in_use[1], values_memory[1], job])
-    except:
-        print("Error") 
+            values_power, values_per_cpu_in_use[1], values_per_gpu_in_use[1], values_memory[1], values_nw, job])
+    except Exception as ex:
+      print(ex)
     # if TEST_MODE: print("Current pods: %s, target: %d" % (curr_pods, (int(target_pods)+POD_EXSISTED)))
 
     

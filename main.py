@@ -52,19 +52,19 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     timestamps["cold_to_null_process_end"]=time.time()
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
         print("Pod number is: {}, Waiting for pod to be terminated".format(k8s_API.get_number_pod(NAMESPACE)))
-        sleep(1)
+        sleep(10)
 
     
     #NOTE: Warm disk state
     k8s_API.config_image(target_pods, IMAGE_NAME)
     k8s_API.config_live_time(target_pods, 6) # change live-time to minimum value = 6s
     config_deploy("deploy") 
-    sleep(5) # sometimes after deployment pod doesn't show up right away, which jeopardizes the below code
+    sleep(10) # sometimes after deployment pod doesn't show up right away, which jeopardizes the below code
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
         print("Pod number is: {}, Waiting for pod to be terminated".format(k8s_API.get_number_pod(NAMESPACE)))
-        sleep(1)
+        sleep(10)
     print("There is no pod in the system. Stablizing ...")
-    sleep(5) # to stablize the system
+    sleep(20) # to stablize the system
     timestamps["warm_disk_state_start"]=time.time()
     collect_state(target_pods, repetition, WARM_DISK_STATE) # during warm-disk, service is already deployed, so we'll see how much resource the system consumes
     timestamps["warm_disk_state_end"]=time.time()

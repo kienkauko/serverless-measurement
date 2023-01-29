@@ -7,7 +7,7 @@ spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/window: 6s
+        autoscaling.knative.dev/window: 300s
     spec:
       containers:
       - image: docker.io/hctung57/object-detection-arm:4.6.1.12@sha256:34a3936e2ca92ba65a3ced21008e29367e2345d1c1bd4e2c19d751c48009ad2b

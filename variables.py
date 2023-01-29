@@ -138,6 +138,7 @@ def reload():
     jobs_status[WARM_CPU_STATE] = True
     jobs_status[WARM_MEM_STATE] = True
     jobs_status[ACTIVE_STATE] = True
+    jobs_status[COLD_STATE] = True
     jobs_status[NULL_TO_WARM_DISK_PROCESS] = True
     jobs_status[NULL_TO_COLD_PROCESS] = True
     jobs_status[COLD_TO_NULL_PROCESS] = True
