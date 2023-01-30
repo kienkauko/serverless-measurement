@@ -19,6 +19,41 @@ from functional_methods import *
 from collect_data import *
 from variables import *
 
+def collect_life_cycle_mem(target_pods: int, repetition: int, event = None):
+    timestamps = {}
+    print("Proxy image is going to be deleted ...")
+    remote_worker_call(DELETE_PROXY_IMAGE_CMD)
+    print("Default gateway will be removed ...")
+    remote_worker_call(DELETE_GW)
+    sleep(5)
+    remote_worker_call(DELETE_GW) # a bug may cause the before cmd not working
+    sleep(10)
+    config_deploy("deploy") 
+    print("Waiting for 40s before turning on network ...")
+    sleep(40)
+    remote_worker_call(ADD_GW)
+    sleep(5)
+    remote_worker_call(ADD_GW) # a bug may cause the before cmd not working
+    while not k8s_API.is_all_con_ready():
+        print("Waiting for all containers ready...")
+        sleep(10)
+    print("2/2 containers are ready, start measuring ...")
+    sleep(10) # to stablize the system
+    timestamps["warm_mem_state_start"]=time.time()
+    collect_state(target_pods, repetition, WARM_MEM_STATE)
+    timestamps["warm_mem_state_end"]=time.time()
+    sleep(10)
+    timestamps["warm_mem_to_warm_disk_start"]=time.time()
+    config_deploy("delete")
+    collect_warm_CPU_to_warm_disk_process(target_pods, repetition, WARM_MEM_TO_WARM_DISK_PROCESS)
+    timestamps["warm_mem_to_warm_disk_end"]=time.time()
+    timestamps_to_file(timestamps, target_pods, repetition)
+    sleep(20)
+    event.set()
+    print("Measurement finished.")
+    print("Saving timestamps..")
+    print("Finished!")
+
 
 def collect_life_cycle(target_pods: int, repetition: int, event = None):
     timestamps = {}

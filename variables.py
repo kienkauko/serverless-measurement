@@ -73,8 +73,12 @@ DATA_TIMESTAMP_FILE_DIRECTORY = DEFAULT_DIRECTORY + "/data/timestamp/{}/timestam
 
 # IMAGE_NAME = "hctung57/object-detection-arm:4.6.1.10@sha256:7361b88965a4bb39a693450902ad660e1722f4a9da677b36374318cc0023d771" #SHA code is required
 IMAGE_NAME = "docker.io/hctung57/object-detection-arm:4.6.1.12@sha256:34a3936e2ca92ba65a3ced21008e29367e2345d1c1bd4e2c19d751c48009ad2b" #SHA code is required
+PROXY_IMAGE_NAME = "b371fa5b70540"
 WRONG_IMAGE_NAME = "docker.io/hctung57/object-detection-a:4.6.1.12@sha256:34a3936e2ca92ba65a3ced21008e29367e2345d1c1bd4e2c19d751c48009ad2b" #SHA code is required
 DELETE_IMAGE_CMD = "sudo crictl rmi " + IMAGE_NAME
+DELETE_PROXY_IMAGE_CMD = "sudo crictl rmi " + PROXY_IMAGE_NAME
+DELETE_GW = "sudo route del default"
+ADD_GW = "sudo ip route add default via 172.16.42.1"
 CURL_TERM = "curl http://{}:8080/api/terminate"
 CURL_ACTIVE = "curl http://{}:8080/api/stream/" + "{}:{}/{}".format(STREAMING_IP, STREAMING_PORT, DETECTION_TIME)
 CURL_ACTIVE_INST = "curl http://{}:8080/api/stream/active/" + "{}:{}/{}".format(STREAMING_IP, STREAMING_PORT, DETECTION_TIME)
@@ -99,7 +103,7 @@ COLD_TO_WARM_DISK_PROCESS = "cold_to_warm_disk_process"
 WARM_DISK_TO_COLD_PROCESS = "warm_disk_to_cold_process"
 WARM_DISK_TO_NULL_PROCESS = "warm_disk_to_null_process"
 ACTIVE_TO_WARM_DISK_PROCESS = "active_to_warm_disk_process"
-
+WARM_MEM_TO_WARM_DISK_PROCESS = "warm_mem_to_warm_disk_process"
 
 #######################################################
 ###### changable variables#############################
@@ -122,6 +126,7 @@ jobs_status = {
     COLD_TO_WARM_DISK_PROCESS : True,
     WARM_DISK_TO_COLD_PROCESS : True,
     WARM_DISK_TO_NULL_PROCESS : True,
+    WARM_MEM_TO_WARM_DISK_PROCESS : True,
 }
 
 config.load_kube_config()
@@ -148,7 +153,7 @@ def reload():
     jobs_status[ACTIVE_TO_WARM_DISK_PROCESS] = True
     jobs_status[COLD_TO_WARM_DISK_PROCESS] = True
     jobs_status[WARM_DISK_TO_COLD_PROCESS] = True
-    jobs_status[WARM_DISK_TO_NULL_PROCESS] = True  
+    jobs_status[WARM_MEM_TO_WARM_DISK_PROCESS] = True  
 
     localdate = datetime.now()
     generate_file_time = "{}_{}_{}_{}h{}".format(localdate.day, localdate.month, localdate.year, localdate.hour, localdate.minute)

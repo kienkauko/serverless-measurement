@@ -27,7 +27,7 @@ if __name__ == "__main__":
             event = Event() # the event is unset when created
             p0 = Process(target=functional_methods.auto_delete, args=(event, ))
             p0.start()
-            main.collect_life_cycle(int(target_pod), int(rep), event)
+            main.collect_life_cycle_mem(int(target_pod), int(rep), event)
             p0.join()
             time.sleep(30)
             # p1 = Process(target=collect_life_cycle, args=(event, int(target_pods_scale), repeat_time, ), daemon = True)

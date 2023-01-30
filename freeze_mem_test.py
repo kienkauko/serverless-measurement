@@ -12,4 +12,4 @@ def switchOnOffContainerFreeze(turn=False, address='172.16.42.10'):
         sb.run(['/bin/bash','warm_mem.sh',address])
 
 
-switchOnOffContainerFreeze(False)
+switchOnOffContainerFreeze(True)
