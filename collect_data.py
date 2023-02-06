@@ -63,14 +63,14 @@ def collect_warm_disk_to_warm_CPU_process(target_pods:int, repetition: int, stat
             jobs_status[state] = False
     print("Scenario: Warm disk to warm CPU - Ended")
 
-def collect_active_to_warm_disk_process(target_pods:int, repetition:int, state:str):
-    print("Scenario: Active to warm disk - Started")
-    while jobs_status[state]:
-        get_prometheus_values_and_update_job(target_pods, state, repetition)
-        time.sleep(0.3)
-        if k8s_API.get_number_pod(NAMESPACE) == 0:  # detect if no pod exists
-            jobs_status[state] = False
-    print("Scenario: Active to warm disk - Ended")
+# def collect_active_to_warm_disk_process(target_pods:int, repetition:int, state:str):
+#     print("Scenario: Active to warm disk - Started")
+#     while jobs_status[state]:
+#         get_prometheus_values_and_update_job(target_pods, state, repetition)
+#         time.sleep(0.3)
+#         if k8s_API.get_number_pod(NAMESPACE) == 0:  # detect if no pod exists
+#             jobs_status[state] = False
+#     print("Scenario: Active to warm disk - Ended")
 
 def collect_warm_CPU_to_warm_disk_process(target_pods:int, repetition:int, state:str):
     print("Scenario: {} - Started".format(state))

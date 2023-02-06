@@ -24,8 +24,8 @@ import psutil
 def get_bytes():
     return psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
 
-def get_mbits():
-    return (psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv)/1024./1024.*8
+# def get_mbits():
+#     return (psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv)/1024./1024.*8
 
 def thread_remote(cmd : str):
     thread = threading.Thread(target=remote_worker_call, args=(cmd, )).start()

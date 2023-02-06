@@ -21,6 +21,10 @@ from variables import *
 
 def collect_life_cycle_mem(target_pods: int, repetition: int, event = None):
     timestamps = {}
+    sleep(10)
+    timestamps["null_state_start"]=time.time()
+    collect_state(target_pods, repetition, NULL_STATE)
+    timestamps["null_state_end"]=time.time()
     print("Proxy image is going to be deleted ...")
     remote_worker_call(DELETE_PROXY_IMAGE_CMD)
     print("Default gateway will be removed ...")
@@ -54,6 +58,8 @@ def collect_life_cycle_mem(target_pods: int, repetition: int, event = None):
     print("Saving timestamps..")
     print("Finished!")
 
+############################################################################
+############################################################################
 
 def collect_life_cycle(target_pods: int, repetition: int, event = None):
     timestamps = {}
@@ -159,7 +165,7 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     time.sleep(20) #Here sleeping to stablize the pod for active measurement
     timestamps["active_to_warm_disk_process_start"]=time.time()
     config_deploy("delete") 
-    collect_active_to_warm_disk_process(target_pods, repetition, ACTIVE_TO_WARM_DISK_PROCESS) # we can use the same function here :)
+    collect_warm_CPU_to_warm_disk_process(target_pods, repetition, ACTIVE_TO_WARM_DISK_PROCESS) # we can use the same function here :)
     timestamps["active_to_warm_disk_process_end"]=time.time()
 
     #NOTE: Here we calculate the process warm disk to active, maybe change
