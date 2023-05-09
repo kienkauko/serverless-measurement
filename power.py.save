@@ -17,13 +17,13 @@ pw = BrickletVoltageCurrentV2(UID_DC, ipcon) # Create device object
 # Callback function for current callback
 em = BrickletEnergyMonitor(UID_AC, ipcon) # Create device object
 
-def cb_current(current):
+def cb_current_DC(current):
     print("Current: " + str(current/1000.0) + " A")
 
 # Callback function for power callback
-def cb_power(power):
+def cb_power_DC(power):
     print("power: " + str(power/1000.0) + " W")
-    
+
 if __name__ == "__main__":
     print("Testing of the Tinkerforge is working correctly")
     # vc = BrickletVoltageCurrentV2(UID, ipcon) # Create device object
