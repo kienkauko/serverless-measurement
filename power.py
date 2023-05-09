@@ -1,10 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 HOST = "127.0.0.1"
 PORT = 4223
 UID_DC = "23iX" # Change XYZ to the UID of your Voltage/Current Bricklet 2.0
 UID_AC = "Uos"
+
 from tinkerforge.ip_connection import IPConnection
 from tinkerforge.bricklet_voltage_current_v2 import BrickletVoltageCurrentV2
 from tinkerforge.bricklet_energy_monitor import BrickletEnergyMonitor
