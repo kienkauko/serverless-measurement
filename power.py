@@ -9,7 +9,7 @@ from tinkerforge.ip_connection import IPConnection
 from tinkerforge.bricklet_voltage_current_v2 import BrickletVoltageCurrentV2
 from tinkerforge.bricklet_energy_monitor import BrickletEnergyMonitor
 import time
-
+qqwewe
 ipcon = IPConnection() # Create IP connection
 ipcon.connect(HOST, PORT) # Connect to brickd
 # ipcon.set_timeout(10)
