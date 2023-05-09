@@ -23,7 +23,8 @@ def cb_current(current):
 # Callback function for power callback
 def cb_power(power):
     print("power: " + str(power/1000.0) + " W")
-    qweqweeq
+
+    
 if __name__ == "__main__":
     print("Testing of the Tinkerforge is working correctly")
     # vc = BrickletVoltageCurrentV2(UID, ipcon) # Create device object
