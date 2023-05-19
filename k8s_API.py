@@ -304,7 +304,7 @@ def config_live_time(target_pods_scale: int, time: int, path_file_deploy: str = 
         print(exc)
     print("Live time has been changed to {} seconds".format(time))
 
-def config_image(target_pods_scale: int, image: str, path_file_deploy: str = DEPLOYMENT_PATH, instance: str = WORKER_HOST): #, detection_image: str
+def config_image(target_pods_scale: int, image: str, instance: str, path_file_deploy: str = DEPLOYMENT_PATH): #, detection_image: str
     #opens the capture file and updates the replica values
     try:  
         new_deployment = []

@@ -1,6 +1,0 @@
-null_state_start,1675086768.6694279,null_state
-null_state_end,1675086832.7015603,null_state
-warm_mem_state_start,1675086936.869374,warm_mem_state
-warm_mem_state_end,1675087003.7135391,warm_mem_state
-warm_mem_to_warm_disk_start,1675087013.7222397,warm_mem_to_warm_disk
-warm_mem_to_warm_disk_end,1675087046.6337564,warm_mem_to_warm_disk

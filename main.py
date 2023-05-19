@@ -19,7 +19,7 @@ from functional_methods import *
 from collect_data import *
 from variables import *
 
-def collect_life_cycle_mem(target_pods: int, repetition: int, event = None):
+def collect_life_cycle_mem(target_pods: int, repetition: int, event = None): # Freeze MEM only
     timestamps = {}
     sleep(10)
     timestamps["null_state_start"]=time.time()
@@ -61,11 +61,12 @@ def collect_life_cycle_mem(target_pods: int, repetition: int, event = None):
 ############################################################################
 ############################################################################
 
-def collect_life_cycle(target_pods: int, repetition: int, event = None):
+def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int, event = None): # Normal lifecycle
+    
     timestamps = {}
     #NOTE: Null process 
     timestamps["null_state_start"]=time.time()
-    collect_state(target_pods, repetition, NULL_STATE)
+    collect_state(host, image, target_pods, repetition, NULL_STATE)
     timestamps["null_state_end"]=time.time()
     
    #NOTE: Warm disk process: here we'll apply deployment and wait until pod is deleted
@@ -80,7 +81,7 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     k8s_API.config_image(target_pods, WRONG_IMAGE_NAME)
     timestamps["null_to_cold_process_start"]=time.time()
     config_deploy("deploy") 
-    collect_null_to_cold_process(target_pods, repetition, NULL_TO_COLD_PROCESS)
+    collect_null_to_cold_process(host, image, target_pods, repetition, NULL_TO_COLD_PROCESS)
     timestamps["null_to_cold_process_end"]=time.time()
     sleep(5)
 
@@ -89,7 +90,7 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     timestamps["cold_to_null_process_start"]=time.time()
     config_deploy("delete") 
     # print("New deployment has been created.")
-    collect_cold_to_null_process(target_pods, repetition, COLD_TO_NULL_PROCESS)
+    collect_cold_to_null_process(host, image, target_pods, repetition, COLD_TO_NULL_PROCESS)
     timestamps["cold_to_null_process_end"]=time.time()
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
         print("Pod number is: {}, Waiting for pod to be terminated".format(k8s_API.get_number_pod(NAMESPACE)))
@@ -107,19 +108,19 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     print("There is no pod in the system. Stablizing ...")
     sleep(20) # to stablize the system
     timestamps["warm_disk_state_start"]=time.time()
-    collect_state(target_pods, repetition, WARM_DISK_STATE) # during warm-disk, service is already deployed, so we'll see how much resource the system consumes
+    collect_state(host, image, target_pods, repetition, WARM_DISK_STATE) # during warm-disk, service is already deployed, so we'll see how much resource the system consumes
     timestamps["warm_disk_state_end"]=time.time()
 
     #NOTE: Warm CPU process: we'll trigger warm CPU by editing the deployment file
     k8s_API.config_live_time(target_pods, LIVE_TIME) # change live-time to maximum = 240s
     config_deploy("deploy") 
     timestamps["warm_disk_to_warm_CPU_process_start"]=time.time()
-    collect_warm_disk_to_warm_CPU_process(target_pods, repetition, WARM_DISK_TO_WARM_CPU_PROCESS)
+    collect_warm_disk_to_warm_CPU_process(host, image, target_pods, repetition, WARM_DISK_TO_WARM_CPU_PROCESS)
     timestamps["warm_disk_to_warm_CPU_process_end"]=time.time() 
 
     #NOTE: Warm CPU state, must measure time < live time
     timestamps["warm_CPU_state_start"]=time.time()
-    collect_state(target_pods, repetition, WARM_CPU_STATE)
+    collect_state(host, image, target_pods, repetition, WARM_CPU_STATE)
     timestamps["warm_CPU_state_end"]=time.time()
 
     #NOTE: this process may happen within ms, so consider ignoring it
@@ -134,7 +135,7 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     print("Detection requests have arrived. Stablizing for at least 30 seconds ...")
     time.sleep(30) #Here sleeping to stablize the pod for active measurement
     timestamps["active_state_start"]=time.time()
-    collect_state(target_pods, repetition, ACTIVE_STATE) # 30 seconds, this time must be lower than requested time
+    collect_state(host, image, target_pods, repetition, ACTIVE_STATE) # 30 seconds, this time must be lower than requested time
     timestamps["active_state_end"]=time.time()
 
     #NOTE: Here we'll force terminate a pod after its time_window runs out.
@@ -147,10 +148,10 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     #NOTE: Warm CPU to warm disk: How to detect the pod is staying at warm CPU or active?: Check status terminating
     while not k8s_API.is_pod_terminated():
         print("Waiting for pod to be terminated")
-        sleep(0.5)
+        sleep(0.3)
     
     timestamps["warm_CPU_to_warm_disk_process_start"]=time.time()
-    collect_warm_CPU_to_warm_disk_process(target_pods, repetition, WARM_CPU_TO_WARM_DISK_PROCESS)
+    collect_warm_CPU_to_warm_disk_process(host, image, target_pods, repetition, WARM_CPU_TO_WARM_DISK_PROCESS)
     timestamps["warm_CPU_to_warm_disk_process_end"]=time.time()
     print("There is no pod in the system.")
 
@@ -165,7 +166,7 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     time.sleep(20) #Here sleeping to stablize the pod for active measurement
     timestamps["active_to_warm_disk_process_start"]=time.time()
     config_deploy("delete") 
-    collect_warm_CPU_to_warm_disk_process(target_pods, repetition, ACTIVE_TO_WARM_DISK_PROCESS) # we can use the same function here :)
+    collect_warm_CPU_to_warm_disk_process(host, image, target_pods, repetition, ACTIVE_TO_WARM_DISK_PROCESS) # we can use the same function here :)
     timestamps["active_to_warm_disk_process_end"]=time.time()
 
     #NOTE: Here we calculate the process warm disk to active, maybe change
@@ -176,7 +177,7 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     # wait until deployment scales down to zero
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
         print("Waiting for pod to be terminated")
-        sleep(1)
+        sleep(10)
     print("There is no pod in the system.")
     
     #NOTE: warm disk to cold by deleting image
@@ -184,22 +185,22 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     thread_event = threading.Event()
     timestamps["warm_disk_to_cold_start"]=time.time()
     threading.Thread(target=remote_worker_call, args=(DELETE_IMAGE_CMD, thread_event,)).start()
-    collect_warm_disk_to_cold_process(target_pods, repetition, WARM_DISK_TO_COLD_PROCESS, thread_event)
+    collect_warm_disk_to_cold_process(host, image, target_pods, repetition, WARM_DISK_TO_COLD_PROCESS, thread_event)
     timestamps["warm_disk_to_cold_end"]=time.time()
 
     #NOTE: Cold state for 30 seconds
     sleep(10)
     timestamps["cold_state_start"]=time.time()
-    collect_state(target_pods, repetition, COLD_STATE)
+    collect_state(host, image, target_pods, repetition, COLD_STATE)
     timestamps["cold_state_end"]=time.time()
 
     #NOTE: Cold state to warm disk by downloading image
     k8s_API.config_live_time(target_pods, 6) # change live-time to minimum value = 6s
     config_deploy("deploy") 
     timestamps["cold_to_warm_disk_start"]=time.time()
-    collect_null_to_warm_disk_process(target_pods, repetition, COLD_TO_WARM_DISK_PROCESS)
+    collect_null_to_warm_disk_process(host, image, target_pods, repetition, COLD_TO_WARM_DISK_PROCESS)
     timestamps["cold_to_warm_disk_end"]=time.time()
-    timestamps_to_file(timestamps, target_pods, repetition)
+    timestamps_to_file(host, image, timestamps, target_pods, repetition)
 
     sleep(20)
     #NOTE: Now we consider from warm_disk/CPU to NULL state
@@ -223,6 +224,53 @@ def collect_life_cycle(target_pods: int, repetition: int, event = None):
     print("Saving timestamps..")
     print("Finished!")
 
+############################################################################
+############################################################################
+
+def curl_latency(host: str, image: str, target_pods: int, repetition: int, event = None):
+    # this function measure the curltime at each 
+    # lifecycle state of a serverless function
+    # It has been tested that we can not curl from
+    # Cold state, so everything starts at Warm Disk
+    k8s_API.config_image(target_pods, HEAVY_IMAGE_NAME_X86, MEC_HOST)
+    k8s_API.config_live_time(target_pods, 60) 
+    config_deploy("deploy") 
+
+    while not k8s_API.is_all_con_ready():
+        print("Waiting for pod to be ready ...")
+        sleep(2)
+    print("Pod is ready!")
+
+    # Warm CPU to Active
+    print("Start collecting {}!".format(WARM_CPU_TO_ACTIVE_PROCESS))
+    URL = 
+    collect_curl(URL, host, image, target_pods, WARM_CPU_TO_ACTIVE_PROCESS, repetition)
+    print("Finish collecting {}!".format(WARM_CPU_TO_ACTIVE_PROCESS))
+    # Response time from Warm CPU
+    
+    print("Start collecting {}!".format(RESPOND_TIME_WARM_CPU))
+    URL = 
+    collect_curl(URL, host, image, target_pods, RESPOND_TIME_WARM_CPU, repetition)
+    print("Finish collecting {}!".format(RESPOND_TIME_WARM_CPU))
+
+
+    # Warm Disk to Active
+    # Response time from Warm Disk
+    while (k8s_API.get_number_pod(NAMESPACE) != 0):
+        print("Waiting for pod to be terminated")
+        sleep(10)
+    print("There is no pod in the system.")
+    print("Start collecting {}!".format(WARM_DISK_TO_ACTIVE_PROCESS))
+    URL = 
+    collect_curl(URL, host, image, target_pods, WARM_DISK_TO_ACTIVE_PROCESS, repetition)
+    print("Finish collecting {}!".format(WARM_DISK_TO_ACTIVE_PROCESS))
+    
+
+
+    # Warm Mem to Active
+    # Response time from Warm Mem
+
+            
 if __name__ == "__main__":
     
     target_pods_scale = sys.argv[1] # number of scaling pod

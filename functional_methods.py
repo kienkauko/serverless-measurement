@@ -69,7 +69,36 @@ def get_data_from_api(query:str):
 #     status = str(subprocess.run(['deployments/get_pod_status.sh', '-l'], stdout=subprocess.PIPE).stdout.decode('utf-8')).strip()
 #     return status == TERMINATING_STATUS
 
-def get_prometheus_values_and_update_job(target_pods:int, job:str, repetition: int):
+def get_curl_values_and_update_job(URL:str, host:str, image:str, target_pods:int, repetition: int, job:str):
+    # Run the command and capture its output
+    output = subprocess.check_output(['./curltime.sh', URL])
+    output = output.replace(b",", b".")
+    # print(output)
+
+    # Extract the values you're interested in from the output
+    # print(output.split(b"time_pretransfer:  ")[1].split(b" ")[0])
+    
+    time_namelookup = float(output.split(b"time_namelookup:  ")[1].split(b" ")[0])
+    time_connect = float(output.split(b"time_connect:  ")[1].split(b" ")[0])
+    time_appconnect = float(output.split(b"time_appconnect:  ")[1].split(b" ")[0])
+    time_pretransfer = float(output.split(b"time_pretransfer:  ")[1].split(b" ")[0])
+    time_redirect = float(output.split(b"time_redirect:  ")[1].split(b" ")[0])
+    time_starttransfer = float(output.split(b"time_starttransfer:  ")[1].split(b" ")[0])
+    time_total = float(output.split(b"time_total:  ")[1].split(b" ")[0])
+
+    # Store the values in a dictionary
+    # time_dict = {"time_namelookup": time_namelookup, "time_connect": time_connect, "time_appconnect": time_appconnect, "time_pretransfer": time_pretransfer,
+    #           "time_redirect": time_redirect, "time_starttransfer": time_starttransfer, "time_total": time_total}
+
+    # Write value to data file
+    try:
+        writer = csv.writer(open(DATA_CURL_FILE_DIRECTORY.format(
+            str(host),str(image), str(target_pods),str(repetition),generate_file_time), 'a'))
+        writer.writerow([time_namelookup, time_connect, time_appconnect, time_pretransfer, time_redirect, time_starttransfer, time_total, job])
+    except Exception as ex:
+      print(ex)
+
+def get_prometheus_values_and_update_job(host:str, image:str, target_pods:int, repetition: int, job:str):
     values_power = pw.get_power()/1000.0
     values_nw = get_bytes()
     values_per_cpu_in_use = get_data_from_api(VALUES_CPU_QUERY.format(JETSON_IP))
@@ -83,7 +112,7 @@ def get_prometheus_values_and_update_job(target_pods:int, job:str, repetition: i
     #write values to file
     try:
         writer = csv.writer(open(DATA_PROMETHEUS_FILE_DIRECTORY.format(
-            str(WORKER_HOST),str(target_pods),str(repetition),str(TARGET_VIDEO),generate_file_time), 'a'))
+            str(host),str(image), str(target_pods),str(repetition),generate_file_time), 'a'))
         writer.writerow([values_memory[0], datetime.utcfromtimestamp(values_memory[0]).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], values_running_pods, 
             values_power, values_per_cpu_in_use[1], values_per_gpu_in_use[1], values_memory[1], values_nw, job])
     except Exception as ex:
@@ -126,10 +155,10 @@ def bash_cmd(cmd:str):
 #         else:
 #             break
             
-def timestamps_to_file(timestamps: dict, target_pods:int, repetition:int):
+def timestamps_to_file(host: str, image: str, timestamps: dict, target_pods:int, repetition:int):
     # print(timestamps)
     with open(DATA_TIMESTAMP_FILE_DIRECTORY.format(
-        str(WORKER_HOST), str(target_pods), str(repetition), str(TARGET_VIDEO), generate_file_time), 'w') as f:
+        str(host), str(image), str(target_pods), str(repetition), generate_file_time), 'w') as f:
         # for key, value in terminate_state.items():
         #     timestamps[key+"_start"]=min(value)
         #     timestamps[key+"_end"]=max(value)
