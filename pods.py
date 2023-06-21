@@ -3,7 +3,7 @@ import yaml
 import subprocess
 from variables import *
 # import main_rebuild
-from run_on_pi4.pi4_constants import SLASH
+# from run_on_pi4.pi4_constants import SLASH
 
 path_file_deploy = "/home/controller/knative-caculation/deployments/object-detection.yaml"
 def update_replicas(target_pods_scale: int, instance: str, detection_image: str):

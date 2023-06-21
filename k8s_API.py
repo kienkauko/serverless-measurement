@@ -321,14 +321,15 @@ def is_all_con_ready(namespace: str = NAMESPACE):
             return False
         else:
             print("Pod {} is ready.".format(i.pod_name))
-    return True
+            return True
+    return False
 
 def is_all_con_not_ready(namespace: str = NAMESPACE):
     a = list_namespaced_pod_status(namespace)
     i:KubernetesPod
     for i in a:
         if i.number_container_ready/i.sum_pod_container == 0:
-            print("No containers are ready.")
+            # print("No containers are ready.")
             return True
         else:
             return False

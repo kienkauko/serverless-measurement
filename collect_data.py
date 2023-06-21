@@ -128,12 +128,13 @@ def collect_warm_disk_to_cold_process(host:str, image:str, target_pods:int, repe
     print("Scenario: {} - Ended".format(state))
 
 
-def collect_curl(URL:str, host:str, image:str, target_pods:int, repetition: int, state:str):
+def collect_curl(URL:str, host:str, image:str, target_pods:int, repetition:int, state:str, quality:str):
     print("Scenario: Measure {} - started".format(state))
     count = 0
     while jobs_status[state]:
-        get_curl_values_and_update_job(URL, host, image, target_pods, state, repetition)
-        time.sleep(3)
+        get_curl_values_and_update_job(URL, host, image, target_pods, state, quality, repetition)
+        print("Finished collecting: {}".format(count))
+        time.sleep(2)
         count = count + 1
         if count == int(CURL_COLLECT_TIME):
             jobs_status[state] = False

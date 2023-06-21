@@ -36,17 +36,18 @@ TEST_MODE = False
 NETWORK_INTERFACE = "eth0"
 PROMETHEUS_DOMAIN = "http://" + PROM_IP + COLON + \
     PROMETHEUS_PORT + "/api/v1/query?query="
-SERVICE_DOMAIN = "http://serverless.default.svc.cluster.local"  # Khong dung
-
+# SERVICE_DOMAIN = "http://serverless.default.svc.cluster.local"  # Khong dung
+HEAVY_DNS = "http://detection{}.serverless.svc.cluster.local"
 # constant values
 # CALCULATION_TYPE = "normal"     # revert_lifecircle
-TARGET_VIDEO = "detection"  # Khong dung
+# TARGET_VIDEO = "detection"  # Khong dung
 STATE_COLLECT_TIME = 60  # 60
-CURL_COLLECT_TIME = 50
+CURL_COLLECT_TIME = 10
 NULL_CALCULATION_TIME = 10
 # ACTIVE_CALCULATION_TIME = 30
 DETECTION_TIME = 200  # 200
 LIVE_TIME = 300  # 240
+IMAGE_QUALITY = "2K"
 
 # QUERY
 VALUES_CPU_QUERY = "100-(avg%20by%20(instance,job)(irate(node_cpu_seconds_total{{mode='idle',job='prometheus',instance='{}:9100'}}[30s])*100))"
@@ -118,15 +119,14 @@ DELETE_IMAGE_CMD = "sudo crictl rmi " + IMAGE_NAME
 DELETE_PROXY_IMAGE_CMD = "sudo crictl rmi " + PROXY_IMAGE_NAME
 DELETE_GW = "sudo route del default"
 ADD_GW = "sudo ip route add default via 172.16.42.1"
-CURL_TERM = "curl http://{}:8080/api/terminate"
-CURL_ACTIVE = "curl http://{}:8080/api/stream/" + \
-    "{}:{}/{}".format(STREAMING_IP, STREAMING_PORT, DETECTION_TIME)
+CURL_TERM = "curl http://{}:8080/api/terminate" # When pod is terminated, DNS may be gone, thus IP is preferred
+CURL_ACTIVE = "curl " + HEAVY_DNS + "/api/stream/" + STREAMING_IP + ":" + STREAMING_PORT + "/" + str(DETECTION_TIME)
 # CURL_ACTIVE_INST = "curl http://{}:8080/api/stream/" + \
 #     "{}:{}/{}/1".format(STREAMING_IP, STREAMING_PORT, DETECTION_TIME)
-CURL_ACTIVE_INST = "curl http://{}:8080/api/stream/active/" + \
-    "{}:{}/{}".format(STREAMING_IP, STREAMING_PORT, DETECTION_TIME)
-CURL_TRIGGER = "curl http://{}:8080/api/active"
-
+CURL_ACTIVE_INST = "curl " + HEAVY_DNS + "/api/stream/active/" + STREAMING_IP + ":" + STREAMING_PORT + "/" + str(DETECTION_TIME)
+CURL_TRIGGER = "curl " + HEAVY_DNS + "/api/active"
+CURL_TRIGGER_TIME = "curl -w \"@curl-time.txt\" -s " + HEAVY_DNS + "/api/active"
+CURL_RESPONSE_TIME = "curl -F upload=@{}.jpg -w \"@curl-time.txt\" -s " + HEAVY_DNS + "/api/picture"
 # STATE
 NULL_STATE = "null_state"
 WARM_DISK_STATE = "warm_disk_state"
@@ -148,6 +148,8 @@ WARM_DISK_TO_NULL_PROCESS = "warm_disk_to_null_process"
 WARM_CPU_TO_ACTIVE_PROCESS = "warm_cpu_to_active_process"
 ACTIVE_TO_WARM_DISK_PROCESS = "active_to_warm_disk_process"
 WARM_MEM_TO_WARM_DISK_PROCESS = "warm_mem_to_warm_disk_process"
+RESPOND_TIME_WARM_CPU = "respond_time_warm_cpu"
+RESPOND_TIME_WARM_DISK = "respond_time_warm_disk"
 
 image_quality = {
     "SD": "./image/SD.jpg",
@@ -181,6 +183,8 @@ jobs_status = {
     WARM_DISK_TO_NULL_PROCESS: True,
     WARM_CPU_TO_ACTIVE_PROCESS: True,
     WARM_MEM_TO_WARM_DISK_PROCESS: True,
+    RESPOND_TIME_WARM_CPU: True,
+    RESPOND_TIME_WARM_DISK: True,
 }
 
 config.load_kube_config()
@@ -211,6 +215,8 @@ def reload():
     jobs_status[COLD_TO_WARM_DISK_PROCESS] = True
     jobs_status[WARM_DISK_TO_COLD_PROCESS] = True
     jobs_status[WARM_MEM_TO_WARM_DISK_PROCESS] = True
+    jobs_status[RESPOND_TIME_WARM_CPU] = True
+    jobs_status[RESPOND_TIME_WARM_DISK] = True
 
     localdate = datetime.now()
     generate_file_time = "{}_{}_{}_{}h{}".format(

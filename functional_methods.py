@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
+import queue
 import requests
 import variables
 import urllib.request
@@ -76,39 +77,41 @@ def get_data_from_api(query: str):
 #     return status == TERMINATING_STATUS
 
 
-def get_curl_values_and_update_job(URL: str, host: str, image: str, target_pods: int, repetition: int, job: str):
+def get_curl_values_and_update_job(cmd: str, host: str, image: str, target_pods: int, job: str, quality: str, repetition: int):
     # Run the command and capture its output
-    output = subprocess.check_output(['./curltime.sh', URL])
-    output = output.replace(b",", b".")
-    # print(output)
+    status, results = exec_pod(cmd, "curl_time")
+    print("Size of results: {}".format(len(results)))
+    for output in results:
+        output = output.replace(b",", b".")
+        # print(output)
 
-    # Extract the values you're interested in from the output
-    # print(output.split(b"time_pretransfer:  ")[1].split(b" ")[0])
+        # Extract the values you're interested in from the output
+        # print(output.split(b"time_pretransfer:  ")[1].split(b" ")[0])
 
-    time_namelookup = float(output.split(
-        b"time_namelookup:  ")[1].split(b" ")[0])
-    time_connect = float(output.split(b"time_connect:  ")[1].split(b" ")[0])
-    time_appconnect = float(output.split(
-        b"time_appconnect:  ")[1].split(b" ")[0])
-    time_pretransfer = float(output.split(
-        b"time_pretransfer:  ")[1].split(b" ")[0])
-    time_redirect = float(output.split(b"time_redirect:  ")[1].split(b" ")[0])
-    time_starttransfer = float(output.split(
-        b"time_starttransfer:  ")[1].split(b" ")[0])
-    time_total = float(output.split(b"time_total:  ")[1].split(b" ")[0])
+        time_namelookup = float(output.split(
+            b"time_namelookup:  ")[1].split(b" ")[0])
+        time_connect = float(output.split(b"time_connect:  ")[1].split(b" ")[0])
+        time_appconnect = float(output.split(
+            b"time_appconnect:  ")[1].split(b" ")[0])
+        time_pretransfer = float(output.split(
+            b"time_pretransfer:  ")[1].split(b" ")[0])
+        time_redirect = float(output.split(b"time_redirect:  ")[1].split(b" ")[0])
+        time_starttransfer = float(output.split(
+            b"time_starttransfer:  ")[1].split(b" ")[0])
+        time_total = float(output.split(b"time_total:  ")[1].split(b" ")[0])
 
-    # Store the values in a dictionary
-    # time_dict = {"time_namelookup": time_namelookup, "time_connect": time_connect, "time_appconnect": time_appconnect, "time_pretransfer": time_pretransfer,
-    #           "time_redirect": time_redirect, "time_starttransfer": time_starttransfer, "time_total": time_total}
+        # Store the values in a dictionary
+        # time_dict = {"time_namelookup": time_namelookup, "time_connect": time_connect, "time_appconnect": time_appconnect, "time_pretransfer": time_pretransfer,
+        #           "time_redirect": time_redirect, "time_starttransfer": time_starttransfer, "time_total": time_total}
 
-    # Write value to data file
-    try:
-        writer = csv.writer(open(DATA_CURL_FILE_DIRECTORY.format(
-            str(host), str(image), str(target_pods), str(repetition), generate_file_time), 'a'))
-        writer.writerow([time_namelookup, time_connect, time_appconnect,
-                        time_pretransfer, time_redirect, time_starttransfer, time_total, job])
-    except Exception as ex:
-        print(ex)
+        # Write value to data file
+        try:
+            writer = csv.writer(open(DATA_CURL_FILE_DIRECTORY.format(
+                str(host), str(image), str(target_pods), str(repetition), generate_file_time), 'a'))
+            writer.writerow([time_namelookup, time_connect, time_appconnect,
+                            time_pretransfer, time_redirect, time_starttransfer, time_total, job, quality])
+        except Exception as ex:
+            print(ex)
 
 
 def get_prometheus_values_and_update_job(host: str, image: str, target_pods: int, state: str, repetition: int):
@@ -213,36 +216,74 @@ def auto_delete(event):
     print("Overwatch for termination finished!")
 
 
+# def exec_pod(cmd: str, type: str = "normal"):
+#     results = []
+#     threads = []
+#     IPs = []
+#     result_queue = queue.Queue()
+#     output_lock = threading.Lock()
+#     status = True
+
+#     if type == "auto_delete":
+#         list_pod = k8s_API.get_list_term_pod(NAMESPACE)
+#     else:
+#         list_pod = k8s_API.list_namespaced_pod_status(NAMESPACE)
+    
+#     for i in list_pod:
+#         IP = i.pod_ip
+#         if (IP is None):
+#             return False, results
+#         else:
+#             IPs.append(IP)
+#     for ip in IPs:
+#         t = threading.Thread(target=connect_pod_exec, args=(cmd.format(ip), result_queue, output_lock, ))
+#         threads.append(t)
+#     for t in threads:
+#         t.start()
+#     for t in threads:
+#         t.join()
+    
+#     while not result_queue.empty():
+#         result = result_queue.get()
+#         results.append(result)
+#     status = True
+#     return status, results
+
 def exec_pod(cmd: str, type: str = "normal"):
+    results = []
+    threads = []
+    IPs = []
+    result_queue = queue.Queue()
+    output_lock = threading.Lock()
+    status = True
     if type == "auto_delete":
         list_pod = k8s_API.get_list_term_pod(NAMESPACE)
-        # print("listpodsize: {}".format(len(list_pod)))
+        for i in list_pod:
+            t = threading.Thread(target=connect_pod_exec, args=(cmd.format(i.pod_ip), result_queue, output_lock, ))
+            threads.append(t)
     else:
-        list_pod = k8s_API.list_namespaced_pod_status(NAMESPACE)
-    output_lock = threading.Lock()
-    threads = []
-    for i in list_pod:
-        IP = i.pod_ip
-        if (IP is None):
-            return False
-        t = threading.Thread(target=connect_pod_exec,
-                         args=(cmd.format(IP), output_lock))
-        threads.append(t)
-        # print("CMD: " + cmd.format(IP) + " has been sent.")
-    
+        for i in range(1, len(k8s_API.list_namespaced_pod_status(NAMESPACE))+1, 1):
+            t = threading.Thread(target=connect_pod_exec, args=(cmd.format(i), result_queue, output_lock, ))
+            threads.append(t)
     for t in threads:
         t.start()
     for t in threads:
         t.join()
-    print("abcxyz")
-    return True
+    while not result_queue.empty():
+        result = result_queue.get()
+        results.append(result)
+    status = True
+    return status, results
 
-def connect_pod_exec(target_command: str, output_lock, target_name: str = "ubuntu"):
+def connect_pod_exec(target_command: str, result_queue, lock, target_name: str = "ubuntu"):
+    print(target_command)
     command = "kubectl exec -it {} -- {} ".format(target_name, target_command)
     trial = 0
     while trial < 20:
         try:
-            subprocess.check_output(['/bin/bash', '-c', command]) # or check_output
+            output = subprocess.check_output(['/bin/bash', '-c', command]) # or check_output
+            with lock:
+                result_queue.put(output)
         except subprocess.CalledProcessError as e:
             output = str(e.output)
             # with output_lock:
@@ -259,7 +300,7 @@ def connect_pod_exec(target_command: str, output_lock, target_name: str = "ubunt
                 continue
         # with output_lock:
         #     print("Seem like a good request, but we never know :)")
-        return 
+        return output
     # with output_lock:
     #     print("The system has sent {} times curl cmd, but none returns successfully.".format(trial))
 
@@ -272,7 +313,37 @@ if __name__ == "__main__":
     # print(pw.get_power()/1000.0)
     # remote_worker_call("sudo ls -a")
     # sleep(100)
-    thread_event = threading.Event()
-    remote_worker_call(DELETE_IMAGE_CMD, thread_event)
+    # thread_event = threading.Event()
+    # remote_worker_call(DELETE_IMAGE_CMD, thread_event)
     # get_prometheus_values_and_update_job('mec', 'image', 1, 1, '1')
     # sudo ctr images remove docker.io/kienkauko/nettools:latest@sha256:573c90a86216c26c02b27ce4105ea7cbf09016659fd30e8f8f61f67fab324620
+
+    output = subprocess.check_output(['/bin/bash', '-c', 'curl -w \"@curl-time.txt\" google.com'])
+        # print(output)
+
+        # Extract the values you're interested in from the output
+        # print(output.split(b"time_pretransfer:  ")[1].split(b" ")[0])
+
+    time_namelookup = float(output.split(
+        b"time_namelookup:  ")[1].split(b" ")[0])
+    time_connect = float(output.split(b"time_connect:  ")[1].split(b" ")[0])
+    time_appconnect = float(output.split(
+        b"time_appconnect:  ")[1].split(b" ")[0])
+    time_pretransfer = float(output.split(
+        b"time_pretransfer:  ")[1].split(b" ")[0])
+    time_redirect = float(output.split(b"time_redirect:  ")[1].split(b" ")[0])
+    time_starttransfer = float(output.split(
+        b"time_starttransfer:  ")[1].split(b" ")[0])
+    time_total = float(output.split(b"time_total:  ")[1].split(b" ")[0])
+    # Store the values in a dictionary
+    time_dict = {"time_namelookup": time_namelookup, "time_connect": time_connect, "time_appconnect": time_appconnect, "time_pretransfer": time_pretransfer,
+                "time_redirect": time_redirect, "time_starttransfer": time_starttransfer, "time_total": time_total}
+    print(time_dict)
+    # Write value to data file
+    # try:
+    #     writer = csv.writer(open(DATA_CURL_FILE_DIRECTORY.format(
+    #         str(host), str(image), str(target_pods), str(repetition), generate_file_time), 'a'))
+    #     writer.writerow([time_namelookup, time_connect, time_appconnect,
+    #                     time_pretransfer, time_redirect, time_starttransfer, time_total, job])
+    # except Exception as ex:
+    #     print(ex)
