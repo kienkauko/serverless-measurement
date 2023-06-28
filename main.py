@@ -89,6 +89,12 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     timestamps["null_to_cold_process_end"] = time.time()
     sleep(5)
 
+    # NOTE: Cold state for 30 seconds
+    sleep(10)
+    timestamps["cold_state_start"] = time.time()
+    collect_state(host, image, target_pods, repetition, COLD_STATE)
+    timestamps["cold_state_end"] = time.time()
+
     # NOTE: Cold to null
     timestamps["cold_to_null_process_start"] = time.time()
     config_deploy("delete")
@@ -103,16 +109,16 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     print("There is no pod in the system")
     # NOTE: Warm disk state
     k8s_API.config_image(IMAGE_NAME)
-    # change live-time to minimum value = 6s
-    k8s_API.config_live_time(6)
+    # change live-time to minimum value = 20s
+    k8s_API.config_live_time(20)
     config_deploy("deploy")
-    sleep(10)  # sometimes after deployment pod doesn't show up right away, which jeopardizes the below code
+    sleep(30)  # sometimes after deployment pod doesn't show up right away, which jeopardizes the below code
     print("Pod number is: {}, Waiting for pod to be terminated".format(
             k8s_API.get_number_pod(NAMESPACE)))
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
         sleep(10)
     print("There is no pod in the system. Stablizing ...")
-    sleep(20)  # to stablize the system
+    sleep(10)  # to stablize the system
     timestamps["warm_disk_state_start"] = time.time()
     # during warm-disk, service is already deployed, so we'll see how much resource the system consumes
     collect_state(host, image, target_pods, repetition, WARM_DISK_STATE)
@@ -126,7 +132,7 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     collect_warm_disk_to_warm_CPU_process(
         host, image, target_pods, repetition, WARM_DISK_TO_WARM_CPU_PROCESS)
     timestamps["warm_disk_to_warm_CPU_process_end"] = time.time()
-
+    sleep(20)
     # NOTE: Warm CPU state, must measure time < live time
     timestamps["warm_CPU_state_start"] = time.time()
     collect_state(host, image, target_pods, repetition, WARM_CPU_STATE)
@@ -140,7 +146,7 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     # timestamps["warm_CPU_to_active_end"]=time.time()
 
     # NOTE: Here we create a curl request towards the running pod
-    exec_pod(CURL_ACTIVE, "normal")
+    exec_pod(CURL_ACTIVE_INST, target_pods, "normal")
     print("Detection requests have arrived. Stablizing for at least 30 seconds ...")
     time.sleep(30)  # Here sleeping to stablize the pod for active measurement
     timestamps["active_state_start"] = time.time()
@@ -168,12 +174,12 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     print("There is no pod in the system.")
 
     # NOTE: active to warm disk
-    exec_pod(CURL_TRIGGER, "normal")
+    exec_pod(CURL_TRIGGER, target_pods, "normal")
     print("Detection requests have arrived. Wait for containers in pod are ready ...")
     while not k8s_API.is_all_con_ready():
         print("Still waiting ...")
         sleep(2)
-    exec_pod(CURL_ACTIVE_INST, "normal")
+    exec_pod(CURL_ACTIVE_INST, target_pods, "normal")
     print("Detection requests have arrived. Stablizing for at least 30 seconds ...")
     time.sleep(20)  # Here sleeping to stablize the pod for active measurement
     timestamps["active_to_warm_disk_process_start"] = time.time()
@@ -205,11 +211,6 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     #     host, image, target_pods, repetition, WARM_DISK_TO_COLD_PROCESS, thread_event)
     # timestamps["warm_disk_to_cold_end"] = time.time()
 
-    # NOTE: Cold state for 30 seconds
-    sleep(10)
-    timestamps["cold_state_start"] = time.time()
-    collect_state(host, image, target_pods, repetition, COLD_STATE)
-    timestamps["cold_state_end"] = time.time()
 
     # NOTE: Cold state to warm disk by downloading image
     # NOTE: this block is temporarily unused due to heavy image takes too long to be downloaded

@@ -5,10 +5,11 @@ from multiprocessing import Event, Process
 from k8s_API import update_deployment
 import functional_methods
 import merge
+import sys
 
 if __name__ == "__main__":
-
-    target_pods_scale = [1]
+    
+    target_pods_scale = [1, 2, 3, 4, 5]
     repeat_time = 1
     current_time = 1
     node = 'mec'
@@ -31,10 +32,10 @@ if __name__ == "__main__":
                   rep, repeat_time, node))
             variables.reload()  # reset all variables
             event = Event()  # the event is unset when created
-            p0 = Process(target=functional_methods.auto_delete, args=(event, ))
+            p0 = Process(target=functional_methods.auto_delete, args=(target_pod, event, ))
             p0.start()
-            main.curl_latency(node, image, list_quality, int(target_pod), int(rep), event)
-            # main.collect_life_cycle(node, image, int(target_pod), int(rep), event)
+            # main.curl_latency(node, image, list_quality, int(target_pod), int(rep), event)
+            main.collect_life_cycle(node, image, int(target_pod), int(rep), event)
             p0.join()
             time.sleep(10)
             # p1 = Process(target=collect_life_cycle, args=(event, int(target_pods_scale), repeat_time, ), daemon = True)

@@ -79,14 +79,17 @@ def get_data_from_api(query: str):
 
 def get_curl_values_and_update_job(cmd: str, host: str, image: str, target_pods: int, job: str, quality: str, repetition: int):
     # Run the command and capture its output
-    status, results = exec_pod(cmd, "curl_time")
-    print("Size of results: {}".format(len(results)))
-    for output in results:
-        output = output.replace(b",", b".")
+    status, results = exec_pod(cmd, target_pods, "curl_time")
+    # print("Size of results: {}".format(len(results)))
+    for i, output in enumerate(results, start=1):
+        # output_t = output.decode("utf-8")
+        # print("Type of output: {}".format(type(output)))
         # print(output)
-
-        # Extract the values you're interested in from the output
-        # print(output.split(b"time_pretransfer:  ")[1].split(b" ")[0])
+        if b"OK" in output or b"Active" in output:
+            print("'OK' request {}".format(i))
+        else:
+            print("Error in request {}".format(i))
+        output = output.replace(b",", b".")
 
         time_namelookup = float(output.split(
             b"time_namelookup:  ")[1].split(b" ")[0])
@@ -196,12 +199,12 @@ def timestamps_to_file(host: str, image: str, timestamps: dict, target_pods: int
 # NOTE: the following function auto terminate pods
 
 
-def auto_delete(event):
+def auto_delete(target_pod, event):
     token = True
     while not event.is_set():
         if k8s_API.is_pod_terminated() and not k8s_API.is_all_con_not_ready() and token:
             print("Detect terminating pod, it'll be deleted shortly")
-            if exec_pod(CURL_TERM, "auto_delete"):
+            if exec_pod(CURL_TERM, target_pod, "auto_delete"):
                 token = False
             else:
                 print("Try to terminate pod, but IP returns None, will try again!")
@@ -249,7 +252,7 @@ def auto_delete(event):
 #     status = True
 #     return status, results
 
-def exec_pod(cmd: str, type: str = "normal"):
+def exec_pod(cmd: str, target_pod: int, type: str = "normal"):
     results = []
     threads = []
     IPs = []
@@ -257,12 +260,15 @@ def exec_pod(cmd: str, type: str = "normal"):
     output_lock = threading.Lock()
     status = True
     if type == "auto_delete":
-        list_pod = k8s_API.get_list_term_pod(NAMESPACE)
+        list_pod = []
+        while len(list_pod) < target_pod: # when multiple pods are deployed, sometimes the code can't query the number of term pod correctly
+            list_pod = k8s_API.get_list_term_pod(NAMESPACE)
+            print("Query of list_term_pod is {}, while target_pod is {}".format(len(list_pod), target_pod))
         for i in list_pod:
             t = threading.Thread(target=connect_pod_exec, args=(cmd.format(i.pod_ip), result_queue, output_lock, ))
             threads.append(t)
     else:
-        for i in range(1, len(k8s_API.list_namespaced_pod_status(NAMESPACE))+1, 1):
+        for i in range(1, target_pod + 1, 1):
             t = threading.Thread(target=connect_pod_exec, args=(cmd.format(i), result_queue, output_lock, ))
             threads.append(t)
     for t in threads:

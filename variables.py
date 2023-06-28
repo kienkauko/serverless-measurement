@@ -121,12 +121,10 @@ DELETE_GW = "sudo route del default"
 ADD_GW = "sudo ip route add default via 172.16.42.1"
 CURL_TERM = "curl http://{}:8080/api/terminate" # When pod is terminated, DNS may be gone, thus IP is preferred
 CURL_ACTIVE = "curl " + HEAVY_DNS + "/api/stream/" + STREAMING_IP + ":" + STREAMING_PORT + "/" + str(DETECTION_TIME)
-# CURL_ACTIVE_INST = "curl http://{}:8080/api/stream/" + \
-#     "{}:{}/{}/1".format(STREAMING_IP, STREAMING_PORT, DETECTION_TIME)
 CURL_ACTIVE_INST = "curl " + HEAVY_DNS + "/api/stream/active/" + STREAMING_IP + ":" + STREAMING_PORT + "/" + str(DETECTION_TIME)
 CURL_TRIGGER = "curl " + HEAVY_DNS + "/api/active"
-CURL_TRIGGER_TIME = "curl -w \"@curl-time.txt\" -s " + HEAVY_DNS + "/api/active"
-CURL_RESPONSE_TIME = "curl -F upload=@{}.jpg -w \"@curl-time.txt\" -s " + HEAVY_DNS + "/api/picture"
+CURL_TRIGGER_TIME = "curl -w \"@curl-time.txt\"  " + HEAVY_DNS + "/api/active"
+CURL_RESPONSE_TIME = "curl -F upload=@{}.jpg -w \"@curl-time.txt\"  " + HEAVY_DNS + "/api/picture"
 # STATE
 NULL_STATE = "null_state"
 WARM_DISK_STATE = "warm_disk_state"

@@ -315,13 +315,16 @@ def config_image(image: str, path_file_deploy: str = DEPLOYMENT_PATH): #, detect
 
 def is_all_con_ready(namespace: str = NAMESPACE):
     a = list_namespaced_pod_status(namespace)
+    count = 0
     i:KubernetesPod
     for i in a:
         if i.number_container_ready/i.sum_pod_container != 1.0:
             return False
         else:
             print("Pod {} is ready.".format(i.pod_name))
-            return True
+            count = count + 1
+            if count == len(a):
+                return True
     return False
 
 def is_all_con_not_ready(namespace: str = NAMESPACE):
