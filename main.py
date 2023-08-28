@@ -20,49 +20,74 @@ from collect_data import *
 from variables import *
 
 
-# def collect_life_cycle_mem(target_pods: int, repetition: int, event=None):  # Freeze MEM only
-#     timestamps = {}
-#     sleep(10)
-#     timestamps["null_state_start"] = time.time()
-#     collect_state(target_pods, repetition, NULL_STATE)
-#     timestamps["null_state_end"] = time.time()
-#     print("Proxy image is going to be deleted ...")
-#     remote_worker_call(DELETE_PROXY_IMAGE_CMD)
-#     print("Default gateway will be removed ...")
-#     remote_worker_call(DELETE_GW)
-#     sleep(5)
-#     remote_worker_call(DELETE_GW)  # a bug may cause the before cmd not working
-#     sleep(10)
-#     config_deploy("deploy")
-#     print("Waiting for 40s before turning on network ...")
-#     sleep(40)
-#     remote_worker_call(ADD_GW)
-#     sleep(5)
-#     remote_worker_call(ADD_GW)  # a bug may cause the before cmd not working
-#     while not k8s_API.is_all_con_ready():
-#         print("Waiting for all containers ready...")
-#         sleep(10)
-#     print("2/2 containers are ready, start measuring ...")
-#     sleep(10)  # to stablize the system
-#     timestamps["warm_mem_state_start"] = time.time()
-#     collect_state(target_pods, repetition, WARM_MEM_STATE)
-#     timestamps["warm_mem_state_end"] = time.time()
-#     sleep(10)
-#     timestamps["warm_mem_to_warm_disk_start"] = time.time()
-#     config_deploy("delete")
-#     collect_warm_CPU_to_warm_disk_process(
-#         target_pods, repetition, WARM_MEM_TO_WARM_DISK_PROCESS)
-#     timestamps["warm_mem_to_warm_disk_end"] = time.time()
-#     timestamps_to_file(timestamps, target_pods, repetition)
-#     sleep(20)
-#     event.set()
-#     print("Measurement finished.")
-#     print("Saving timestamps..")
-#     print("Finished!")
+def collect_life_cycle_mem(host: str, image: str, target_pods: int, repetition: int, event):  # Freeze MEM only
+    timestamps = {}
+    sleep(10)
+    timestamps["null_state_start"] = time.time()
+    collect_state(host, image, target_pods, repetition, NULL_STATE)
+    timestamps["null_state_end"] = time.time()
+    print("Proxy image is going to be deleted ...")
+    remote_worker_call(DELETE_PROXY_IMAGE_CMD)
+    print("Default gateway will be removed ...")
+    remote_worker_call(DELETE_GW)
+    sleep(5)
+    remote_worker_call(DELETE_GW)  # a bug may cause the before cmd not working
+    sleep(10)
+    config_deploy("deploy")
+    print("Waiting for 40s before turning on network ...")
+    sleep(40)
+    remote_worker_call(ADD_GW)
+    sleep(5)
+    remote_worker_call(ADD_GW)  # a bug may cause the before cmd not working
+    while not k8s_API.is_all_con_ready():
+        print("Waiting for all containers ready...")
+        sleep(10)
+    print("2/2 containers are ready, start measuring ...")
+    sleep(10)  # to stablize the system
+    timestamps["warm_mem_state_start"] = time.time()
+    collect_state(host, image, target_pods, repetition, WARM_MEM_STATE)
+    timestamps["warm_mem_state_end"] = time.time()
+    sleep(10)
+    timestamps["warm_mem_to_warm_disk_start"] = time.time()
+    config_deploy("delete")
+    collect_warm_CPU_to_warm_disk_process(host, image, target_pods, repetition, WARM_MEM_TO_WARM_DISK_PROCESS)
+    timestamps["warm_mem_to_warm_disk_end"] = time.time()
+    timestamps_to_file(host, image, timestamps, target_pods, repetition)
+    sleep(20)
+    event.set()
+    print("Measurement finished.")
+    print("Saving timestamps..")
+    print("Finished!")
 
 ############################################################################
 ############################################################################
 
+def collect_cold_warm_disk(host: str, image: str, target_pods: int, repetition: int, event):  # Normal lifecycle
+    timestamps = {}
+    # k8s_API.config_image(WRONG_IMAGE_NAME)
+    # k8s_API.update_deployment(target_pods, "null", "mec", DEFAULT_DIRECTORY + "/template1.yaml")
+    remote_worker_call(DELETE_IMAGE_CMD, JETSON_USERNAME, JETSON_IP, JETSON_PASSWORD)
+    sleep(10)
+    k8s_API.config_image(IMAGE_NAME)
+    k8s_API.config_live_time(100)
+    config_deploy("deploy")
+    timestamps["cold_to_warm_disk_start"] = time.time()
+    collect_null_to_warm_disk_process(host, image, target_pods, repetition, COLD_TO_WARM_DISK_PROCESS)
+    timestamps["cold_to_warm_disk_end"] = time.time()
+    timestamps_to_file(host, image, timestamps, target_pods, repetition)
+    config_deploy("delete")
+    while (k8s_API.get_number_pod(NAMESPACE) != 0):
+        print("Waiting for pod to be terminated")
+        sleep(5)
+    print("There is no pod in the system.")
+    sleep(10)
+    event.set()
+    print("Measurement finished.")
+    print("Saving timestamps..")
+    print("Finished!")
+
+############################################################################
+############################################################################
 
 def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int, event):  # Normal lifecycle
 
@@ -153,6 +178,10 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     # 30 seconds, this time must be lower than requested time
     collect_state(host, image, target_pods, repetition, ACTIVE_STATE)
     timestamps["active_state_end"] = time.time()
+
+    # NOTE: Here we take log file out:
+    exec_pod(CURL_FPS, target_pods, "fps")
+    get_fps_exec(host, target_pods, repetition)
 
     # NOTE: Here we'll force terminate a pod after its time_window runs out.
     # Pre-condition: processing time of task must > time_window
@@ -254,7 +283,7 @@ def curl_latency(host: str, image: str, list_quality: list, target_pods: int, re
     # Cold state, so everything starts at Warm Disk
     # RESPONSE_URL = CURL_RESPONSE_HEAVY.format(quality)
     # print("current URL is: {}".format(RESPONSE_URL))
-    k8s_API.config_image(HEAVY_IMAGE_NAME_X86)
+    k8s_API.config_image(IMAGE_NAME)
     k8s_API.config_live_time(60) 
     config_deploy("deploy") 
 

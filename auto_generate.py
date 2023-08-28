@@ -9,12 +9,16 @@ import sys
 
 if __name__ == "__main__":
     
-    target_pods_scale = [1, 2, 3, 4, 5]
+    target_pods_scale = [1]
     repeat_time = 1
     current_time = 1
-    node = 'mec'
-    image = 'x86'
-    list_quality = ["360P", "480P", "HD", "2K", "4K"]
+    node = 'jetson'
+    # node = 'mec'
+    image = 'arm'
+    # image = 'x86'
+
+    # list_quality = ["360P", "480P", "HD", "2K", "4K"]
+    list_quality = []
 
     # list video: highway.mp4, 4K_video_59s.webm, traffic_34s.webm, video.mp4
     # target_video = "highway.mp4"
@@ -34,10 +38,12 @@ if __name__ == "__main__":
             event = Event()  # the event is unset when created
             p0 = Process(target=functional_methods.auto_delete, args=(target_pod, event, ))
             p0.start()
-            # main.curl_latency(node, image, list_quality, int(target_pod), int(rep), event)
-            main.collect_life_cycle(node, image, int(target_pod), int(rep), event)
+            main.curl_latency(node, image, list_quality, int(target_pod), int(rep), event)
+            # time.sleep(20)
+            # main.collect_life_cycle(node, image, int(target_pod), int(rep), event)
+            # main.collect_cold_warm_disk(node, image, int(target_pod), int(rep), event)
             p0.join()
-            time.sleep(10)
+            time.sleep(20)
             # p1 = Process(target=collect_life_cycle, args=(event, int(target_pods_scale), repeat_time, ), daemon = True)
             # print("Start calculate")
             # p1.start()

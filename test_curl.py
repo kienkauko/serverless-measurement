@@ -1,4 +1,8 @@
+import os
 import subprocess
+
+from functional_methods import exec_pod, get_fps_exec
+from variables import CURL_FPS
 
 def curl_time(URL :str):
     # Define the command to run
@@ -26,9 +30,12 @@ def curl_time(URL :str):
 
     # Print the dictionary
     print(times)
-
+ 
 
 if __name__=="__main__":
     # multiservice_pods.update_replicas(3, "pi4", "29061999/knative-video-detection-arm@sha256:47705b6d9561b0fe45fadf559802a8d500c32b069fd50ef0fc69e6859c34a9e3")
     # create_request_thread(8)
-    curl_time("google.com")
+    # curl_time("google.com")
+    # print(CURL_FPS)
+    exec_pod(CURL_FPS, 2, "fps")
+    get_fps_exec("mec", 2, 1)

@@ -30,24 +30,24 @@ def get_bytes():
 #     return (psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv)/1024./1024.*8
 
 
-def thread_remote(cmd: str):
-    thread = threading.Thread(target=remote_worker_call, args=(cmd, )).start()
-    return thread
+# def thread_remote(cmd: str):
+#     thread = threading.Thread(target=remote_worker_call, args=(cmd, )).start()
+#     return thread
 
 
-def remote_worker_call(command: str, event=None):
+def remote_worker_call(command: str, host_username: str, host_ip: str, host_pass: str, event=None):
     print("Trying to connect to remote host {}, IP: {}".format(
-        JETSON_USERNAME, JETSON_IP))
+        host_username, host_ip))
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(JETSON_IP, username=JETSON_USERNAME,
-                       password=JETSON_PASSWORD)
+        client.connect(host_ip, username=host_username,
+                       password=host_pass)
     except paramiko.AuthenticationException:
-        print("Authentication failed when connecting to %s" % JETSON_IP)
+        print("Authentication failed when connecting to %s" % host_ip)
         sys.exit(1)
     except:
-        print("Could not SSH to %s, waiting for it to start" % JETSON_IP)
+        print("Could not SSH to %s, waiting for it to start" % host_ip)
     print(command)
     stdin, stdout, stderr = client.exec_command(command, get_pty=True)
     stdin.write(JETSON_PASSWORD + '\n')
@@ -89,19 +89,32 @@ def get_curl_values_and_update_job(cmd: str, host: str, image: str, target_pods:
             print("'OK' request {}".format(i))
         else:
             print("Error in request {}".format(i))
+            try:
+                writer = csv.writer(open(DATA_CURL_FILE_DIRECTORY.format(
+                    str(host), str(image), str(target_pods), str(repetition), generate_file_time), 'a'))
+                writer.writerow([job, quality, "error"])
+            except Exception as ex:
+                print(ex)
+            continue
         output = output.replace(b",", b".")
 
-        time_namelookup = float(output.split(
-            b"time_namelookup:  ")[1].split(b" ")[0])
-        time_connect = float(output.split(b"time_connect:  ")[1].split(b" ")[0])
-        time_appconnect = float(output.split(
-            b"time_appconnect:  ")[1].split(b" ")[0])
-        time_pretransfer = float(output.split(
-            b"time_pretransfer:  ")[1].split(b" ")[0])
-        time_redirect = float(output.split(b"time_redirect:  ")[1].split(b" ")[0])
-        time_starttransfer = float(output.split(
-            b"time_starttransfer:  ")[1].split(b" ")[0])
-        time_total = float(output.split(b"time_total:  ")[1].split(b" ")[0])
+        time_namelookup = float((output.split(
+            b"time_namelookup:  ")[1].split(b" ")[0]).split(b"s")[0])
+        
+        time_connect = float((output.split(b"time_connect:  ")[1].split(b" ")[0]).split(b"s")[0])
+
+        time_appconnect = float((output.split(
+            b"time_appconnect:  ")[1].split(b" ")[0]).split(b"s")[0])
+        
+        time_pretransfer = float((output.split(
+            b"time_pretransfer:  ")[1].split(b" ")[0]).split(b"s")[0].split(b"s")[0])
+        
+        time_redirect = float((output.split(b"time_redirect:  ")[1].split(b" ")[0]).split(b"s")[0])
+
+        time_starttransfer = float((output.split(
+            b"time_starttransfer:  ")[1].split(b" ")[0]).split(b"s")[0])
+        
+        time_total = float((output.split(b"time_total:  ")[1].split(b" ")[0]).split(b"s")[0].split(b"s")[0])
 
         # Store the values in a dictionary
         # time_dict = {"time_namelookup": time_namelookup, "time_connect": time_connect, "time_appconnect": time_appconnect, "time_pretransfer": time_pretransfer,
@@ -118,20 +131,29 @@ def get_curl_values_and_update_job(cmd: str, host: str, image: str, target_pods:
 
 
 def get_prometheus_values_and_update_job(host: str, image: str, target_pods: int, state: str, repetition: int):
+    ip = ""
+    gpu_query = ""
+    values_power = 0
+    values_energy = 0
     if host == 'jetson':
+        ip = JETSON_IP
+        # gpu_query = VALUES_GPU_QUERY_JETSON
         values_power = pw.get_power()/1000.0
+        values_energy = 0 # Jetson power board has now energy value, so pls ignore it
     else:
+        ip = MEC_IP
+        gpu_query = VALUES_GPU_QUERY_MEC
         voltage, current, energy, real_power, apparent_power, reactive_power, power_factor, frequency = em.get_energy_data()
         # real_power = 100000
         values_power = real_power/100.0
+        values_energy = energy*36 #Convert from Wh --> J
     values_nw = get_bytes()
-    values_per_cpu_in_use = get_data_from_api(
-        VALUES_CPU_QUERY.format(JETSON_IP))
-    values_per_gpu_in_use = get_data_from_api(
-        VALUES_GPU_QUERY.format(JETSON_IP))
+    values_per_cpu_in_use = get_data_from_api(VALUES_CPU_QUERY.format(ip))
+    # values_per_gpu_in_use = get_data_from_api(gpu_query.format(ip))
+    values_per_gpu_in_use = [0,0]
     # values_network_receive = get_data_from_api(VALUES_NETWORK_RECEIVE_QUERY)
     values_memory = get_data_from_api(
-        VALUES_MEMORY_QUERY.format(JETSON_IP, JETSON_IP, JETSON_IP))
+        VALUES_MEMORY_QUERY.format(ip, ip, ip))
     # print(values_memory)
     values_running_pods = k8s_API.get_number_pod()
     # print(values_running_pods)
@@ -141,7 +163,7 @@ def get_prometheus_values_and_update_job(host: str, image: str, target_pods: int
         writer = csv.writer(open(DATA_PROMETHEUS_FILE_DIRECTORY.format(
             str(host), str(image), str(target_pods), str(repetition), generate_file_time), 'a'))
         writer.writerow([values_memory[0], datetime.utcfromtimestamp(values_memory[0]).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], values_running_pods,
-                         values_power, values_per_cpu_in_use[1], values_per_gpu_in_use[1], values_memory[1], values_nw, state])
+                         values_power, values_energy, values_per_cpu_in_use[1], values_per_gpu_in_use[1], values_memory[1], values_nw, state])
     except Exception as ex:
         print(ex)
     # if TEST_MODE: print("Current pods: %s, target: %d" % (curr_pods, (int(target_pods)+POD_EXSISTED)))
@@ -267,6 +289,10 @@ def exec_pod(cmd: str, target_pod: int, type: str = "normal"):
         for i in list_pod:
             t = threading.Thread(target=connect_pod_exec, args=(cmd.format(i.pod_ip), result_queue, output_lock, ))
             threads.append(t)
+    elif type == "fps":
+        for i in range(1, target_pod + 1, 1):
+            t = threading.Thread(target=connect_pod_exec, args=(cmd.format(i, i), result_queue, output_lock, ))
+            threads.append(t)
     else:
         for i in range(1, target_pod + 1, 1):
             t = threading.Thread(target=connect_pod_exec, args=(cmd.format(i), result_queue, output_lock, ))
@@ -281,6 +307,16 @@ def exec_pod(cmd: str, target_pod: int, type: str = "normal"):
     status = True
     return status, results
 
+def get_fps_exec(host, target_pod, rep):
+    try:
+        for i in range(1,target_pod + 1, 1):
+            cmd = "kubectl cp ubuntu:file{}.log".format(i) + " " + DATA_FPS_FILE_DIRECTORY.format(host, target_pod, rep, i, generate_file_time)
+            print(cmd)
+            output = subprocess.check_output(['/bin/bash', '-c', cmd]) # or check_output
+    except subprocess.CalledProcessError as e:
+        output = str(e.output)
+    return output
+
 def connect_pod_exec(target_command: str, result_queue, lock, target_name: str = "ubuntu"):
     print(target_command)
     command = "kubectl exec -it {} -- {} ".format(target_name, target_command)
@@ -294,7 +330,7 @@ def connect_pod_exec(target_command: str, result_queue, lock, target_name: str =
             output = str(e.output)
             # with output_lock:
             #     print("Subprocess output is: {}".format(output))
-            if "52" in output:
+            if "52" in output or "200" in output:
                 # with output_lock:
                 #     print("Terminated successfully")
                 return 

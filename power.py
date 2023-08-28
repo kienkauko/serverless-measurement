@@ -42,10 +42,14 @@ if __name__ == "__main__":
     # Configure threshold for power "greater than 10 W"
     # with a debounce period of 1s (1000ms)
     # pw.set_power_callback_configuration(1000, False, ">", 1*1000, 0)
+    em.reset_energy()
     while True:
         print("Jetson power: " + str(pw.get_power()/1000.0) + " W")
         voltage, current, energy, real_power, apparent_power, reactive_power, power_factor, frequency = em.get_energy_data()
         print("MEC Power: " + str(real_power/100.0) + " W")
+        print("MEC Energy: " + str(energy/100.0) + " Wh")
+        print("MEC Energy in J: " + str(energy*36) + " J")
+        
         time.sleep(0.5)
     
     input("Press key to exit\n") # Use raw_input() in Python 2
