@@ -3,8 +3,8 @@ from kubernetes import client, config
 from datetime import datetime
 import os
 # INSTANCE = 'mec'
-INSTANCE = 'jetson'
-WORKER_HOST = INSTANCE
+# INSTANCE = 'jetson'
+# WORKER_HOST = INSTANCE
 
 # HOST IP
 MASTER_HOST = "localhost"
@@ -42,6 +42,8 @@ HEAVY_DNS = "http://detection{}.serverless.svc.cluster.local"
 # constant values
 # CALCULATION_TYPE = "normal"     # revert_lifecircle
 # TARGET_VIDEO = "detection"  # Khong dung
+
+# Measurement parameters
 STATE_COLLECT_TIME = 60  # 60
 CURL_COLLECT_TIME = 100
 NULL_CALCULATION_TIME = 10
@@ -60,33 +62,22 @@ VALUES_NETWORK_RECEIVE_QUERY = "rate(node_network_receive_bytes_total{{device='"
 VALUES_GPU_QUERY_MEC = "nvidia_smi_utilization_gpu_ratio{{instance='{}:9835'}}"
 VALUES_GPU_QUERY_JETSON = "gpu_utilization_percentage_Hz{{instance='{}:9200',nvidia_gpu='utilization'}}"
 # SERVER_FOLDER = "server"
-DATA_UMMETER_FOLDER = "data_ummeter"
-PULLING_TIME_FOLDER = "pulling_time"
-PI4_FOLDER = "pi4"
+# DATA_UMMETER_FOLDER = "data_ummeter"
+# PULLING_TIME_FOLDER = "pulling_time"
+# PI4_FOLDER = "pi4"
 
 # FILE NAME
-POD_START_TIME_FILENAME = "pod_start_time_{}_{}.csv"
-DATA_PROMETHEUS_AT_PI4_FILENAME = "data-prometheus_{}_{}_pi4.csv"
-TIMESTAMP_FILENAME = "timestamps_{}_{}_server.csv"
-DATA_UMMETER_FILENAME = "data_ummeter_{}_{}.csv"
-DATA_PULLING_IMAGE_FILENAME = "data_pulling_image_{}_{}.csv"
+# POD_START_TIME_FILENAME = "pod_start_time_{}_{}.csv"
+# DATA_PROMETHEUS_AT_PI4_FILENAME = "data-prometheus_{}_{}_pi4.csv"
+# TIMESTAMP_FILENAME = "timestamps_{}_{}_server.csv"
+# DATA_UMMETER_FILENAME = "data_ummeter_{}_{}.csv"
+# DATA_PULLING_IMAGE_FILENAME = "data_pulling_image_{}_{}.csv"
 
 # DIRECTORIES
 DEFAULT_DIRECTORY = os.getcwd()
 DATA_DIRECTORY = DEFAULT_DIRECTORY + "/data/"
-POD_START_TIME_DATA_FILE_DIRECTOR = DATA_DIRECTORY + POD_START_TIME_FILENAME
 DEPLOYMENT_PATH = DEFAULT_DIRECTORY + "/deploy.yaml"
 TEMPLATE_PATH = DEFAULT_DIRECTORY + "/template.yaml"
-
-BASH_PATH = DEFAULT_DIRECTORY + "/deployments"
-DATA_PROMETHEUS_AT_PI4_FILE_DIRECTORY = DATA_DIRECTORY + \
-    PI4_FOLDER + SLASH + DATA_PROMETHEUS_AT_PI4_FILENAME
-DATA_UMMETER_FILE_DIRECTORY = DATA_DIRECTORY + \
-    DATA_UMMETER_FOLDER + SLASH + DATA_UMMETER_FILENAME
-PULLING_TIME_DATA_FILE_DIRECTORY = DATA_DIRECTORY + \
-    PULLING_TIME_FOLDER + SLASH + DATA_PULLING_IMAGE_FILENAME
-
-
 DATA_PROMETHEUS_FILE_DIRECTORY = DEFAULT_DIRECTORY + \
     "/data/resource/{}/{}_pod_{}_rep_{}_{}.csv"
 DATA_TIMESTAMP_FILE_DIRECTORY = DEFAULT_DIRECTORY + \
@@ -95,6 +86,17 @@ DATA_CURL_FILE_DIRECTORY = DEFAULT_DIRECTORY + \
     "/data/curl/{}/{}_pod_{}_rep_{}_{}.csv"
 DATA_FPS_FILE_DIRECTORY = DEFAULT_DIRECTORY + \
     "/data/fps/{}/pod_{}_rep_{}_#pod_{}_{}.log"
+# POD_START_TIME_DATA_FILE_DIRECTOR = DATA_DIRECTORY + POD_START_TIME_FILENAME
+# BASH_PATH = DEFAULT_DIRECTORY + "/deployments"
+# DATA_PROMETHEUS_AT_PI4_FILE_DIRECTORY = DATA_DIRECTORY + \
+#     PI4_FOLDER + SLASH + DATA_PROMETHEUS_AT_PI4_FILENAME
+# DATA_UMMETER_FILE_DIRECTORY = DATA_DIRECTORY + \
+#     DATA_UMMETER_FOLDER + SLASH + DATA_UMMETER_FILENAME
+# PULLING_TIME_DATA_FILE_DIRECTORY = DATA_DIRECTORY + \
+#     PULLING_TIME_FOLDER + SLASH + DATA_PULLING_IMAGE_FILENAME
+
+
+
 
 # CMD
 
@@ -109,18 +111,19 @@ LIGHT_WRONG_IMAGE_NAME_X86 = "docker.io/mc0137/detect_ab:v1.4@sha256:3ba0c98c26a
 LIGHT_IMAGE_NAME_ARM = "docker.io/mc0137/detect_abnormal:arm1.4@sha256:0e8ee05c5d256abc89f6f98fb3b4f40863a97ff7b43dfb6c92f7a8024cc049f4"  # SHA code is required
 LIGHT_WRONG_IMAGE_NAME_ARM = "docker.io/mc0137/detect_ab:arm1.1@sha256:ea4866fffee1c5536c59e0850b4d8acbbdb655a4a575f6fbbe904a0e38e23a27"  # SHA code is required
 PROXY_IMAGE_NAME = "b371fa5b70540"
-
+IMAGE_NAME = HEAVY_IMAGE_NAME_ARM
+# IMAGE_NAME = HEAVY_IMAGE_NAME_X86_WARM_ONLY
+# IMAGE_NAME = HEAVY_IMAGE_NAME_X86
+# IMAGE_NAME = HEAVY_IMAGE_WARM_ONLY
+# IMAGE_NAME = LIGHT_IMAGE_NAME_X86
+# IMAGE_NAME = LIGHT_IMAGE_NAME_ARM
 
 # WRONG_IMAGE_NAME = HEAVY_WRONG_IMAGE_NAME_X86
 # WRONG_IMAGE_NAME = HEAVY_WRONG_IMAGE_NAME_ARM
 # WRONG_IMAGE_NAME = LIGHT_WRONG_IMAGE_NAME_X86
 # WRONG_IMAGE_NAME = LIGHT_WRONG_IMAGE_NAME_ARM
-# IMAGE_NAME = HEAVY_IMAGE_NAME_X86_WARM_ONLY
-# IMAGE_NAME = HEAVY_IMAGE_NAME_X86
-IMAGE_NAME = HEAVY_IMAGE_NAME_ARM
-# IMAGE_NAME = HEAVY_IMAGE_WARM_ONLY
-# IMAGE_NAME = LIGHT_IMAGE_NAME_X86
-# IMAGE_NAME = LIGHT_IMAGE_NAME_ARM
+
+# System cmds
 DELETE_IMAGE_CMD = "sudo crictl rmi " + IMAGE_NAME
 DELETE_PROXY_IMAGE_CMD = "sudo crictl rmi " + PROXY_IMAGE_NAME
 DELETE_GW = "sudo route del default"
@@ -133,6 +136,8 @@ CURL_TRIGGER = "curl " + HEAVY_DNS + "/api/active"
 CURL_TRIGGER_TIME = "curl -w \"@curl-time.txt\"  " + HEAVY_DNS + "/api/active"
 CURL_RESPONSE_TIME = "curl -F upload=@{}.jpg -w \"@curl-time.txt\"  " + HEAVY_DNS + "/api/picture"
 CURL_FPS = "curl http://detection{}.serverless.svc.cluster.local/download -o file{}.log"
+
+
 # STATE
 NULL_STATE = "null_state"
 WARM_DISK_STATE = "warm_disk_state"

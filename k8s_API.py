@@ -261,7 +261,7 @@ def get_list_term_pod(namespace:str = NAMESPACE):
             list_term_pod.append(i)
     return list_term_pod
 
-def update_deployment(target_pods_scale: int, image: str,  host: str = WORKER_HOST, path_file_deploy: str = TEMPLATE_PATH):
+def update_deployment(target_pods_scale: int, image: str,  host: str, path_file_deploy: str = TEMPLATE_PATH):
 #opens the capture file and updates the replica values
     try:  
         new_deployment = []
@@ -389,7 +389,7 @@ if __name__ == "__main__":
         # print(i.pod_ip)
         # print("{}/{}".format(i.number_container_ready,i.sum_pod_container))
     print("Test ....")
-    update_deployment(3, "Kienkauko")
+    update_deployment(3, "Kienkauko", "jetson")
     config_live_time(20000, "./deploy.yaml")
     config_image("Kien-test", "./deploy.yaml")
     print("Finish")
