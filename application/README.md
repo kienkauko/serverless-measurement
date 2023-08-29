@@ -55,7 +55,7 @@ This app detects what kind of object in the fetched image/video using YOLO-v4 mo
 Images:
 + for x86: ```docker.io/kiemtcb/detection-object:4.5x86@sha256:a3f295760c9b4d31f6455d013f1542c61ff1bfedf6042a125c70ed3c71f318cd```
 + for ARM: ```docker.io/kiemtcb/detection-object:4.5arm@sha256:71dca3f048f124cb395f5a165aef43c058cff94adffe44437af5d933d3d39c10```
-  
++ version 4.7 may have updated png image processing! pls double check it
 APIs:
 ```
 Terminate: http://<DNS or IP:PORT>/api/terminate
