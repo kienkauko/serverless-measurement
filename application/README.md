@@ -55,12 +55,17 @@ This app detects what kind of object in the fetched image/video using YOLO-v4 mo
 Images:
 + for x86: ```docker.io/kiemtcb/detection-object:4.5x86@sha256:a3f295760c9b4d31f6455d013f1542c61ff1bfedf6042a125c70ed3c71f318cd```
 + for ARM: ```docker.io/kiemtcb/detection-object:4.5arm@sha256:71dca3f048f124cb395f5a165aef43c058cff94adffe44437af5d933d3d39c10```
-+ version 4.7 may have updated png image processing! pls double check it
++ version 4.7 may have updated png image processing! pls double check it  
+  
+This app releases a log file containing FPS counted every one second inside, check API to know how to retrieve it.  
+
 APIs:
 ```
 Terminate: http://<DNS or IP:PORT>/api/terminate
 Checks container ready: http://<DNS or IP:PORT>/api/active
 Stream with slow response: http://<DNS or IP:PORT>/api/stream/<streamingIP>:<streamingPort>/<time>
-Stream with immediate  response: http://<DNS or IP:PORT>/api/stream/active/<streamingIP>:<streamingPort>/<time>
-Detect picture: curl -F upload=@image.jpg http://<DNS or IP:PORT>/api/picture (only works with .jpg file format)
+Stream with immediate  response: http://<DNS or IP:PORT>/api/stream/active/<streamingIP>:<streamingPort>/<time>  
+Get log file: http://<DNS or IP:PORT>/download -o file{}.log
+Detect picture: curl -F upload=@image.jpg http://<DNS or IP:PORT>/api/picture (only works with .jpg file format)  
+Detect picture with detection result: curl -F upload=@image.jpg http://mec.default.svc.cluster.local/api/picture/return
 ```
