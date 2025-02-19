@@ -147,18 +147,15 @@ def get_prometheus_values_and_update_job(host: str, image: str, target_pods: int
         # real_power = 100000
         values_power = real_power/100.0
         values_energy = energy*36 #Convert from Wh --> J
-    values_nw = get_bytes()
-    values_per_cpu_in_use = get_data_from_api(VALUES_CPU_QUERY.format(ip))
-    # values_per_gpu_in_use = get_data_from_api(gpu_query.format(ip))
-    values_per_gpu_in_use = [0,0]
-    # values_network_receive = get_data_from_api(VALUES_NETWORK_RECEIVE_QUERY)
-    values_memory = get_data_from_api(
-        VALUES_MEMORY_QUERY.format(ip, ip, ip))
-    # print(values_memory)
-    values_running_pods = k8s_API.get_number_pod()
-    # print(values_running_pods)
 
-    # write values to file
+    values_per_cpu_in_use = get_data_from_api(VALUES_CPU_QUERY.format(ip)) # query CPU
+    # values_per_gpu_in_use = get_data_from_api(gpu_query.format(ip)) # query CPU, turn on if GPU exporter exists
+    values_per_gpu_in_use = [0,0] # turn off if GPU exporter exists
+    # values_network_receive = get_data_from_api(VALUES_NETWORK_RECEIVE_QUERY) # turn on to measure bandwidth
+    values_memory = get_data_from_api(VALUES_MEMORY_QUERY.format(ip, ip, ip)) # query RAM
+    values_running_pods = k8s_API.get_number_pod() # query number of running pods
+
+    # write values to csv file
     try:
         writer = csv.writer(open(DATA_PROMETHEUS_FILE_DIRECTORY.format(
             str(host), str(image), str(target_pods), str(repetition), generate_file_time), 'a'))
@@ -169,25 +166,6 @@ def get_prometheus_values_and_update_job(host: str, image: str, target_pods: int
     # if TEST_MODE: print("Current pods: %s, target: %d" % (curr_pods, (int(target_pods)+POD_EXSISTED)))
 
 
-# def update_job_status(state:str, values_running_pods, target_pods:int):
-#     #+2 on target pods for the default pods
-#     curr_running_pods = int(values_running_pods[1])
-#     # print(state, values_running_pods, target_pods, POD_EXISTED)
-#     if WARM_DISK_2_WARM_CPU_PROCESS == state or "cold_start:curl" == state:
-#         if curr_running_pods == POD_EXISTED + target_pods:
-#             jobs_status[WARM_DISK_TO_WARM_CPU_PROCESS] = False
-#     elif WARM_CPU_STATE == state:
-#         if curr_running_pods == POD_EXISTED: # it means pods have been deleted
-#             jobs_status[WARM_CPU_STATE] = False
-#     elif DELETE_JOB == state:
-#         if curr_running_pods == POD_EXISTED:
-#             jobs_status[DELETE_PROCESSING] = False
-
-# NOTE: Tung will handle this function
-# def create_request(url:str): # Here change to kubectl exec command by k8s python
-#     #rs_response = requests.get(url)
-#     rs_response = kubectl exec -it ubuntu -- "url"
-#     print(rs_response.content)
 
 def bash_cmd(cmd: str):
     result = subprocess.run([cmd], stderr=subprocess.PIPE, text=True)
@@ -352,13 +330,6 @@ def config_deploy(cmd: str):
 
 
 if __name__ == "__main__":
-    # print(pw.get_power()/1000.0)
-    # remote_worker_call("sudo ls -a")
-    # sleep(100)
-    # thread_event = threading.Event()
-    # remote_worker_call(DELETE_IMAGE_CMD, thread_event)
-    # get_prometheus_values_and_update_job('mec', 'image', 1, 1, '1')
-    # sudo ctr images remove docker.io/kienkauko/nettools:latest@sha256:573c90a86216c26c02b27ce4105ea7cbf09016659fd30e8f8f61f67fab324620
 
     output = subprocess.check_output(['/bin/bash', '-c', 'curl -w \"@curl-time.txt\" google.com'])
         # print(output)

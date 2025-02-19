@@ -50,7 +50,7 @@ def collect_state(host:str, image:str, target_pods:int, repetition: int, state:s
         get_prometheus_values_and_update_job(host, image, target_pods, state, repetition)
         time.sleep(0.5)
         count = count + 0.5
-        if count == int(STATE_COLLECT_TIME):
+        if count == int(STATE_COLLECT_TIME): # collect a predefined amount of time
             jobs_status[state] = False
     print("Scenario: Measure {} - Ended".format(state))
 
@@ -63,14 +63,6 @@ def collect_warm_disk_to_warm_CPU_process(host:str, image:str, target_pods:int, 
             jobs_status[state] = False
     print("Scenario: Warm disk to warm CPU - Ended")
 
-# def collect_active_to_warm_disk_process(target_pods:int, repetition:int, state:str):
-#     print("Scenario: Active to warm disk - Started")
-#     while jobs_status[state]:
-#         get_prometheus_values_and_update_job(target_pods, state, repetition)
-#         time.sleep(0.3)
-#         if k8s_API.get_number_pod(NAMESPACE) == 0:  # detect if no pod exists
-#             jobs_status[state] = False
-#     print("Scenario: Active to warm disk - Ended")
 
 def collect_warm_CPU_to_warm_disk_process(host:str, image:str, target_pods:int, repetition:int, state:str):
     print("Scenario: {} - Started".format(state))
@@ -105,9 +97,9 @@ def collect_null_to_warm_disk_process(host:str, image:str, target_pods:int, repe
 def collect_null_to_cold_process(host:str, image:str, target_pods:int, repetition:int, state:str):
     print("Scenario: {} - Started".format(state))
     while jobs_status[state]:
-        get_prometheus_values_and_update_job(host, image, target_pods, state, repetition)
-        time.sleep(0.2)
-        if  k8s_API.is_endpoint_available() == True:  # detect if image has been pulled successfully
+        get_prometheus_values_and_update_job(host, image, target_pods, state, repetition) # send Query to Prometheus to get measurement results
+        time.sleep(0.2) # set rate of collecting measurement results, here after 0.2s, a value from Prometheus will be taken
+        if  k8s_API.is_endpoint_available() == True:  # detect if endpoint exists
             jobs_status[state] = False
     print("Scenario: {} - Ended".format(state))
 

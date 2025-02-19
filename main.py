@@ -20,47 +20,6 @@ from collect_data import *
 from variables import *
 
 
-# def collect_life_cycle_mem(host: str, image: str, target_pods: int, repetition: int, event):  # Freeze MEM only
-#     timestamps = {}
-#     sleep(10)
-#     timestamps["null_state_start"] = time.time()
-#     collect_state(host, image, target_pods, repetition, NULL_STATE)
-#     timestamps["null_state_end"] = time.time()
-#     print("Proxy image is going to be deleted ...")
-#     remote_worker_call(DELETE_PROXY_IMAGE_CMD)
-#     print("Default gateway will be removed ...")
-#     remote_worker_call(DELETE_GW)
-#     sleep(5)
-#     remote_worker_call(DELETE_GW)  # a bug may cause the before cmd not working
-#     sleep(10)
-#     config_deploy("deploy")
-#     print("Waiting for 40s before turning on network ...")
-#     sleep(40)
-#     remote_worker_call(ADD_GW)
-#     sleep(5)
-#     remote_worker_call(ADD_GW)  # a bug may cause the before cmd not working
-#     while not k8s_API.is_all_con_ready():
-#         print("Waiting for all containers ready...")
-#         sleep(10)
-#     print("2/2 containers are ready, start measuring ...")
-#     sleep(10)  # to stablize the system
-#     timestamps["warm_mem_state_start"] = time.time()
-#     collect_state(host, image, target_pods, repetition, WARM_MEM_STATE)
-#     timestamps["warm_mem_state_end"] = time.time()
-#     sleep(10)
-#     timestamps["warm_mem_to_warm_disk_start"] = time.time()
-#     config_deploy("delete")
-#     collect_warm_CPU_to_warm_disk_process(host, image, target_pods, repetition, WARM_MEM_TO_WARM_DISK_PROCESS)
-#     timestamps["warm_mem_to_warm_disk_end"] = time.time()
-#     timestamps_to_file(host, image, timestamps, target_pods, repetition)
-#     sleep(20)
-#     event.set()
-#     print("Measurement finished.")
-#     print("Saving timestamps..")
-#     print("Finished!")
-
-############################################################################
-############################################################################
 
 def collect_cold_warm_disk(host: str, image: str, target_pods: int, repetition: int, event):  # Normal lifecycle
     timestamps = {}
@@ -91,14 +50,14 @@ def collect_cold_warm_disk(host: str, image: str, target_pods: int, repetition: 
 
 def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int, event):  # Normal lifecycle
 
-    timestamps = {}
+    timestamps = {} # dictionary to store when does the state start
+
     # NOTE: Null process
-    timestamps["null_state_start"] = time.time()
-    collect_state(host, image, target_pods, repetition, NULL_STATE)
-    timestamps["null_state_end"] = time.time()
+    timestamps["null_state_start"] = time.time() # store when state NULL starts
+    collect_state(host, image, target_pods, repetition, NULL_STATE) # collect measurement data of state
+    timestamps["null_state_end"] = time.time() # store when state NULL ends
 
    # NOTE: Warm disk process: here we'll apply deployment and wait until pod is deleted
-   # UPDATE: Now NUll --> Cold --> warm disk
    # To measure the Null --> Cold process we do the following
    # Turn off network by remote call (or the entire process of turning on/off network can be
    # replace by typing a non-existed image, then we fix file deployment later)
@@ -132,12 +91,13 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
         sleep(10)
     print("There is no pod in the system")
+
+
     # NOTE: Warm disk state
     k8s_API.config_image(IMAGE_NAME)
-    # change live-time to minimum value = 20s
-    k8s_API.config_live_time(20)
+    k8s_API.config_live_time(20)     # change live-time to minimum value = 20s
     config_deploy("deploy")
-    sleep(30)  # sometimes after deployment pod doesn't show up right away, which jeopardizes the below code
+    sleep(30)  # sometimes after deployment pod doesn't show up right away, which causes the below code crashes, that's why I let it stabilize for 30s here
     print("Pod number is: {}, Waiting for pod to be terminated".format(
             k8s_API.get_number_pod(NAMESPACE)))
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
@@ -145,8 +105,7 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     print("There is no pod in the system. Stablizing ...")
     sleep(10)  # to stablize the system
     timestamps["warm_disk_state_start"] = time.time()
-    # during warm-disk, service is already deployed, so we'll see how much resource the system consumes
-    collect_state(host, image, target_pods, repetition, WARM_DISK_STATE)
+    collect_state(host, image, target_pods, repetition, WARM_DISK_STATE) # during warm-disk, service is already deployed, so we'll see how much resource the system consumes
     timestamps["warm_disk_state_end"] = time.time()
 
     # NOTE: Warm CPU process: we'll trigger warm CPU by editing the deployment file
@@ -171,17 +130,16 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     # timestamps["warm_CPU_to_active_end"]=time.time()
 
     # NOTE: Here we create a curl request towards the running pod
-    exec_pod(CURL_ACTIVE_INST, target_pods, "normal")
+    exec_pod(CURL_ACTIVE_INST, target_pods, "normal") # curl requests are sent from inside a simple "ubuntu" pod
     print("Detection requests have arrived. Stablizing for at least 30 seconds ...")
     time.sleep(30)  # Here sleeping to stablize the pod for active measurement
     timestamps["active_state_start"] = time.time()
-    # 30 seconds, this time must be lower than requested time
     collect_state(host, image, target_pods, repetition, ACTIVE_STATE)
     timestamps["active_state_end"] = time.time()
 
-    # NOTE: Here we take log file out:
-    exec_pod(CURL_FPS, target_pods, "fps")
-    get_fps_exec(host, target_pods, repetition)
+    # NOTE: Here we request processing a video, store log file locally in container then download log file
+    exec_pod(CURL_FPS, target_pods, "fps") # send curl requests processing a video
+    get_fps_exec(host, target_pods, repetition) # download log file 
 
     # NOTE: Here we'll force terminate a pod after its time_window runs out.
     # Pre-condition: processing time of task must > time_window
@@ -190,19 +148,20 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     # calculate_active_2_warm_disk(target_pods, repetition)
     # timestamps["active_to_warm_disk_end"]=time.time()
 
-    # NOTE: Warm CPU to warm disk: How to detect the pod is staying at warm CPU or active?: Check status terminating
+    # How to detect the pod is staying at warm CPU or active?: Check status terminating
     print("Waiting for pod to be terminated")
     while not k8s_API.is_pod_terminated():
         sleep(0.3)
     print("Pod has been terminated")
 
+    # NOTE: Warm CPU to warm disk
     timestamps["warm_CPU_to_warm_disk_process_start"] = time.time()
     collect_warm_CPU_to_warm_disk_process(
         host, image, target_pods, repetition, WARM_CPU_TO_WARM_DISK_PROCESS)
     timestamps["warm_CPU_to_warm_disk_process_end"] = time.time()
     print("There is no pod in the system.")
 
-    # NOTE: active to warm disk
+    # NOTE: active to warm disk, we don't need this one anymore
     exec_pod(CURL_TRIGGER, target_pods, "normal")
     print("Detection requests have arrived. Wait for containers in pod are ready ...")
     while not k8s_API.is_all_con_ready():
@@ -218,19 +177,14 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
         host, image, target_pods, repetition, ACTIVE_TO_WARM_DISK_PROCESS)
     timestamps["active_to_warm_disk_process_end"] = time.time()
 
-    # NOTE: Here we calculate the process warm disk to active, maybe change
-    # to the older image (one that returns immediately after code is ready)
-    # timestamps["warm_disk_to_active_start"]=time.time()
-    # cal_warm_disk_to_active(target_pods, repetition, WARM_DISK_TO_ACTIVE_PROCESS)
-    # timestamps["warm_disk_to_active_end"]=time.time()
-    # wait until deployment scales down to zero
+    # NOTE: Here we wait for pod number to scale to zero
     while (k8s_API.get_number_pod(NAMESPACE) != 0):
         print("Waiting for pod to be terminated")
         sleep(10)
     print("There is no pod in the system.")
 
-    # NOTE: warm disk to cold by deleting image
-    # NOTE: this block is temporarily unused due to heavy image takes too long to be downloaded
+    # NOTE: warm disk to cold by deleting image, WARNING! this block is temporarily unused due to heavy image takes too long to be downloaded
+    # NOTE: use with caution! 
     # print("Deleting image ...")
     # thread_event = threading.Event()
     # timestamps["warm_disk_to_cold_start"] = time.time()
@@ -241,8 +195,8 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     # timestamps["warm_disk_to_cold_end"] = time.time()
 
 
-    # NOTE: Cold state to warm disk by downloading image
-    # NOTE: this block is temporarily unused due to heavy image takes too long to be downloaded
+    # NOTE: warm disk to cold by deleting image, WARNING! this block is temporarily unused due to heavy image takes too long to be downloaded
+    # NOTE: use with caution! 
     # k8s_API.config_live_time(6)
     # config_deploy("deploy")
     # timestamps["cold_to_warm_disk_start"] = time.time()
@@ -250,28 +204,21 @@ def collect_life_cycle(host: str, image: str, target_pods: int, repetition: int,
     #     host, image, target_pods, repetition, COLD_TO_WARM_DISK_PROCESS)
     # timestamps["cold_to_warm_disk_end"] = time.time()
 
+    # save timestamps to file, I don't think this one is used anymore? consider to remove it
     timestamps_to_file(host, image, timestamps, target_pods, repetition)
-
+    # sleep a bit to stablize system
     sleep(10)
-    # NOTE: Now we consider from warm_disk/CPU to NULL state
+
+    # NOTE: Now we delete deployment, the system goes back to Null state
     config_deploy("delete")
     sleep(30)
-    # NOTE: this block is temporarily unused due to heavy image takes too long to be downloaded
-    # remote_worker_call(DELETE_IMAGE_CMD)
-    # sleep(10)
 
-    # Maybe multiprocessing should be considered here
-    # timestamps["warm_disk_to_null_start"]=time.time()
-    # p0=Process(target=remote_worker_call, args=(DELETE_IMAGE.format(image), ))
-    # p0.start()
-    # multiservice_pods.delete_pods()
-    # calculate_warm_disk_2_null_process(target_pods, repetition)
-    # timestamps["warm_disk_to_null_end"]=time.time()
-
+    # NOTE: finish measurement, raise flag event to stop other processes as well
     event.set()
     print("Measurement finished.")
     print("Saving timestamps..")
     print("Finished!")
+
 
 ############################################################################
 ############################################################################
@@ -327,9 +274,6 @@ def curl_latency(host: str, image: str, list_quality: list, target_pods: int, re
     
     event.set()
     print("Measurement finished.")
-    # Warm Mem to Active - TBD
-    # From Null/Cold to Active - is sum of normal measurement + curl measurement
-    # For ex: Null --> Active = Null --> WarmDisk (normal measurement) + WarmDisk --> Active (curl measurement)
 
 ############################################################################
 ############################################################################

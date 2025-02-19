@@ -195,12 +195,6 @@ def config_deploy(cmd : str, path_file_output : str = DEPLOYMENT_PATH):
         print(f"An error occurred: {e}")
     # print("Service deployed")
 
-# def delete_pods(path_file_output : str = DEPLOYMENT_PATH):
-#     try:
-#         subprocess.call('echo {} | sudo {}/./kubectl.sh {} {}'.format(MASTER_PASSWORD, BASH_PATH, cmd, path_file_output), shell=True)
-#     except Exception as e:
-#         print(f"An error occurred: {e}")
-    # print("Service deleted")
 
 def connect_pod_exec(target_command: str, target_name: str = "ubuntu"):
     command = "kubectl exec -it {} -- {} ".format(target_name, target_command)

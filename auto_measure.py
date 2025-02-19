@@ -12,17 +12,14 @@ if __name__ == "__main__":
     target_pods_scale = [1]
     repeat_time = 1
     current_time = 1
-    node = 'jetson'
+    node = 'jetson' # name of machine where pods are deployed
     # node = 'mec'
-    image = 'arm'
+    image = 'arm' # name of image type
     # image = 'x86'
 
     # list_quality = ["360P", "480P", "HD", "2K", "4K"]
     list_quality = []
 
-    # list video: highway.mp4, 4K_video_59s.webm, traffic_34s.webm, video.mp4
-    # target_video = "highway.mp4"
-    # detection_image = ""
 
     for target_pod in target_pods_scale:
         update_deployment(target_pod, "null", node) # Update number of deployment according to target_pod
@@ -32,18 +29,15 @@ if __name__ == "__main__":
                   rep, repeat_time, node))
             variables.reload()  # reset all variables
             event = Event()  # the event is unset when created
-            p0 = Process(target=functional_methods.auto_delete, args=(target_pod, event, ))
-            p0.start()
-            main.curl_latency(node, image, list_quality, int(target_pod), int(rep), event)
-            # time.sleep(20)
-            # main.collect_life_cycle(node, image, int(target_pod), int(rep), event)
-            # main.collect_cold_warm_disk(node, image, int(target_pod), int(rep), event)
+            p0 = Process(target=functional_methods.auto_delete, args=(target_pod, event, )) # curl to exit() the code from inside container, causing container to be removed
+            p0.start() 
+            main.curl_latency(node, image, list_quality, int(target_pod), int(rep), event) # measure response time using 'curl' commands
+            # time.sleep(20) # sleep is used quite often to stablize system, making the results more precise
+            main.collect_life_cycle(node, image, int(target_pod), int(rep), event) # collect the entire lifecycle: Null -> Cold -> Warm disk -> Warm CPU -> Active
+            # main.collect_cold_warm_disk(node, image, int(target_pod), int(rep), event) # collect only: Null -> Cold -> warm disk
             p0.join()
             time.sleep(20)
-            # p1 = Process(target=collect_life_cycle, args=(event, int(target_pods_scale), repeat_time, ), daemon = True)
-            # print("Start calculate")
-            # p1.start()
-
+    
             # cmd = '/usr/bin/python3 ' + DEFAULT_DIRECTORY +'/main_rebuild.py {} {} {}'.format(str(target_pod),  str(rep), str(instance))
             # process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
     # event.set()
