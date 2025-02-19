@@ -14,20 +14,22 @@ Frame Per Second (FPS) for app that exposes API to get this info
 ```
 
 ## Before running:
-You can see the required library in the `main.py` files, other from that, there are some prerequisites as follows:
-⋅⋅* File `curl.yaml` must be deployed and stay in the system forever, it serves as the container for curl cmd to run over
-⋅⋅* Prometheus must be installed and its address must be given in the `variable.py` file
-⋅⋅* Tinkerforge devices and its relevant libs must be implemented in order to be used the `power.py` file
-⋅⋅* Images for Applications you want to measure, premade images (YOLO) are available in `\data`
+You can see the required library in the [`main.py`](./main.py) file. Other than that, there are some prerequisites as follows:
+
+- File [`curl.yaml`](./curl.yaml) must be deployed and stay in the system forever; it serves as the container for the curl command to run over.
+- Prometheus must be installed, and its address must be given in the [`variable.py`](./variable.py) file.
+- Tinkerforge devices and their relevant libraries must be implemented in order to be used in the [`power.py`](./power.py) file.
+- Images for applications you want to measure—premade images (YOLO) are available in [`/data`](./data).
+
 
 ## Basic cmds:
 File `auto_measure.py` contains a loop, which repetitively runs the `main.py` file. Why repetition? because it's basic measurement requirement. Run `auto_measure.py` by: `python3 auto_measure.py`  
 
 File `main.py` control which part of lifecycle needs to be measured, it can be run independently for testing purpose. This files has three important functions:  
   
-1. `collect_life_cycle` for measuring most of the lifecycle.
-2. `curl_latency` for measuring the response time perceived by end-users through **curl** cmd
-3. `collect_cold_warm_disk` for temporarily measuring the *Cold to Warm Disk* process. This is previously measured by detecting the **Pulled** status of deployment  
+- `collect_life_cycle` for measuring most of the lifecycle.
+- `curl_latency` for measuring the response time perceived by end-users through **curl** cmd
+- `collect_cold_warm_disk` for temporarily measuring the *Cold to Warm Disk* process. This is previously measured by detecting the **Pulled** status of deployment  
 
 However, a bug occurred in the code leading to wrong detection. Notice that result from this process must be minused with *Null to Cold* and *Warm Disk to Warm CPU* to get the real *Cold to Warm Disk* value.  
 
