@@ -19,7 +19,7 @@ You can see the required library in the [`main.py`](./main.py) file. Other than 
 - File [`curl.yaml`](./curl.yaml) must be deployed and stay in the system forever; it serves as the container for the curl command to run over.
 - Prometheus must be installed, and its address must be given in the [`variable.py`](./variable.py) file.
 - Tinkerforge devices and their relevant libraries must be implemented in order to be used in the [`power.py`](./power.py) file.
-- Images for applications you want to measure—premade images (YOLO) are available in [`/data`](./data).
+- Images for applications you want to measure—premade images (YOLO) are available in [`/application`](./application).
 
 
 ## Basic cmds:
